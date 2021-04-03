@@ -49,9 +49,9 @@ u64 get_emulated_base_address(HANDLE dolphin) {
                     return (u64)info.BaseAddress;
                 }
             }
-            
-            memory += info.RegionSize;
         }
+        
+        memory += info.RegionSize;
     }
     
     return 0;
@@ -119,6 +119,6 @@ void get_game_values(memory_reader *reader, game_values *values) {
     ReadGameValue(bubble_bowl_speed);
     ReadGameValue(buttons);
     
-    u32 character_address = byte_swap_u32(values->player_pointer);
+    u32 character_address = byte_swap_u32(values->player_pointer) - 0x80000000;
     read_game_memory(reader, character_address, &values->character, sizeof(values->character));
 }

@@ -29,12 +29,12 @@ typedef uint64_t u64;
 
 
 typedef enum {
-        cb_NoCB,
-        cb_FailedCB,
-        cb_FirstPress,
-        cb_FirstCB,
-        cb_SecondPress,
-        cb_SecondCB
+    cb_NoCB,
+    cb_FailedCB,
+    cb_FirstPress,
+    cb_FirstCB,
+    cb_SecondPress,
+    cb_SecondCB
 } cb_state;
 
 typedef struct {
@@ -50,14 +50,14 @@ typedef struct {
 
 void cb_state_machine_call_fail_cb(idkwhatever* idk)
 {
-
+    
 }
 
 void cb_state_machine_update(idkwhatever* idk) {
-
+    
     cb_state_machine* machine = idk->machine;
     game_values* gameval = idk->gameval;
-
+    
     switch(machine->state) {
         case cb_NoCB: {
             if ((gameval->buttons & BUTTON_L) != 0 && (gameval->buttons & BUTTON_L) != 0) {
@@ -79,7 +79,7 @@ void cb_state_machine_update(idkwhatever* idk) {
                     machine->state = cb_SecondPress;
                 }
             } else if ((gameval->buttons & BUTTON_L) != 0) {
-
+                
                 machine->state = cb_FirstPress;
             } else if ((gameval->buttons & BUTTON_X) != 0) {
                 machine->state = cb_FailedCB;
@@ -96,7 +96,7 @@ void cb_state_machine_update(idkwhatever* idk) {
             }
         } break;
     }
-
+    
 }
 
 int main(void) {
@@ -110,22 +110,22 @@ int main(void) {
     idk.gameval = &gameval;
     idk.oldgameval = &oldgameval;
     //call update 
-
+    
     init_memory_reader(&reader);
-
+    
     if (!reader.is_hooked) {
-        printf("Dolphin not hooked!");
+        printf("Dolphin not hooked!\n");
         return 1;
     } else {
-        printf("Dolphin hooked!");
+        printf("Dolphin hooked!\n");
     }
-
+    
     while(true) {
-        
         oldgameval = gameval;
         get_game_values(&reader, &gameval);
         cb_state_machine_update(&idk);
-
+        
+        
     }
-
+    
 }
