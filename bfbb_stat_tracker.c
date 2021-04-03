@@ -58,40 +58,44 @@ void cb_state_machine_update(idkwhatever* idk) {
     cb_state_machine* machine = idk->machine;
     game_values* gameval = idk->gameval;
     
+    s32 l_button_is_down = (gameval->buttons & BUTTON_L) != 0;
+    s32 x_button_is_down = (gameval->buttons & BUTTON_X) != 0;
+    s32 l_and_x_buttons_are_down = l_button_is_down && x_button_is_down;
+    
     switch(machine->state) {
         case cb_NoCB: {
-            if ((gameval->buttons & BUTTON_L) != 0 && (gameval->buttons & BUTTON_L) != 0) {
+            if (l_and_x_buttons_are_down) {
                 machine->state = cb_FirstPress; 
-            } else if ((gameval->buttons & BUTTON_L) != 0 || (gameval->buttons & BUTTON_L) != 0) {
+            } else if (l_button_is_down || x_button_is_down) {
                 machine->state = cb_FailedCB;
             }
         } break;
         case cb_FirstPress: {
-            if ((gameval->buttons & BUTTON_L) == 0 && (gameval->buttons & BUTTON_L) == 0) {
+            if (l_and_x_buttons_are_down) {
                 machine->state = cb_FirstCB; 
             }
         } break;
         case cb_FirstCB: {
-            if ((gameval->buttons & BUTTON_L) != 0 && (gameval->buttons & BUTTON_L) != 0) {
+            if (l_and_x_buttons_are_down) {
                 if (gameval->bubble_bowl_speed <= 1.0f) {
                     return;
                 } else if (gameval->is_bowling) {
                     machine->state = cb_SecondPress;
                 }
-            } else if ((gameval->buttons & BUTTON_L) != 0) {
+            } else if (l_button_is_down) {
                 
                 machine->state = cb_FirstPress;
-            } else if ((gameval->buttons & BUTTON_X) != 0) {
+            } else if (x_button_is_down) {
                 machine->state = cb_FailedCB;
             }
         } break;
         case cb_SecondPress: {
-            if ((gameval->buttons & BUTTON_L) == 0 && (gameval->buttons & BUTTON_L) == 0) {
+            if (l_and_x_buttons_are_down) {
                 machine->state = cb_SecondCB; 
             }
         } break;
         case cb_FailedCB: {
-            if ((gameval->buttons & BUTTON_L) == 0 && (gameval->buttons & BUTTON_L) == 0) {
+            if (l_and_x_buttons_are_down) {
                 machine->state = cb_NoCB; 
             }
         }
@@ -106,7 +110,7 @@ void cb_state_machine_update(idkwhatever* idk) {
             }
         } break;
     }
-
+    
     printf("%d\n", machine->state);
     
 }
