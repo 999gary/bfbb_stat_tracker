@@ -3,6 +3,8 @@
 #include <tlhelp32.h>
 #include <psapi.h>
 
+// TODO: loop through different exe names .. Dolphin.exe, DolphinWx.exe, DolphinQt2.exe
+
 #define DOLPHIN_PROCESS_NAME "Dolphin.exe"
 
 void byte_swap_u16(u16 *n) { *n =  _byteswap_ushort(*n); }

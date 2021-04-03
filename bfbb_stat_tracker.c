@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#include "stretchy_buffer.h"
+
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
@@ -53,11 +55,14 @@ void cb_state_machine_call_fail_cb(idkwhatever* idk)
     
 }
 
+static u64 cruise_boost_counter = 0;
+static float *cruise_boost_speeds = NULL;
+
 void cb_state_machine_update(idkwhatever* idk) {
     
     cb_state_machine* machine = idk->machine;
     game_values* gameval = idk->gameval;
-
+    
     if (gameval->character != 0 || !gameval->can_bubble_bowl || !gameval->can_cruise_bubble)
         return;
     
@@ -104,7 +109,8 @@ void cb_state_machine_update(idkwhatever* idk) {
         case cb_SecondCB: {
             if (!machine->in_cb) {
                 machine->in_cb = true;
-                printf("CB Performed.\n");
+                cruise_boost_counter++;
+                sb_push(cruise_boost_speeds, gameval->bubble_bowl_speed);
             }
             if (!gameval->is_bowling)
             {
@@ -142,11 +148,29 @@ int main(void) {
         oldgameval = gameval;
         get_game_values(&reader, &gameval);
         
+        
         if (oldgameval.update_dt != gameval.update_dt)
         {
             cb_state_machine_update(&idk);
         }
+        
+        float cb_speed_sum = 0.0f;
+        int count = sb_count(cruise_boost_speeds);
+        for (int i = 0; i < count; ++i) {
+            cb_speed_sum += cruise_boost_speeds[i];
+        }
+        float average_cruise_boost_speed = cb_speed_sum / (float)cruise_boost_counter;
+        
+        printf("\rlevel = \"%s\" | dt = %f | BB speed = %f | cb count = %llu | avg cb speed = %f           ", 
+               gameval.level,
+               gameval.update_dt,
+               gameval.bubble_bowl_speed,
+               cruise_boost_counter,
+               average_cruise_boost_speed);
+        
         Sleep(1);
     }
+    
+    printf("\n");
     
 }
