@@ -57,6 +57,9 @@ void cb_state_machine_update(idkwhatever* idk) {
     
     cb_state_machine* machine = idk->machine;
     game_values* gameval = idk->gameval;
+
+    if (gameval->character != 0 || !gameval->can_bubble_bowl || !gameval->can_cruise_bubble)
+        return;
     
     s32 l_button_is_down = (gameval->buttons & BUTTON_L) != 0;
     s32 x_button_is_down = (gameval->buttons & BUTTON_X) != 0;
@@ -71,7 +74,7 @@ void cb_state_machine_update(idkwhatever* idk) {
             }
         } break;
         case cb_FirstPress: {
-            if (l_and_x_buttons_are_down) {
+            if (!l_and_x_buttons_are_down) {
                 machine->state = cb_FirstCB; 
             }
         } break;
@@ -83,22 +86,21 @@ void cb_state_machine_update(idkwhatever* idk) {
                     machine->state = cb_SecondPress;
                 }
             } else if (l_button_is_down) {
-                
                 machine->state = cb_FirstPress;
             } else if (x_button_is_down) {
                 machine->state = cb_FailedCB;
             }
         } break;
         case cb_SecondPress: {
-            if (l_and_x_buttons_are_down) {
+            if (!l_and_x_buttons_are_down) {
                 machine->state = cb_SecondCB; 
             }
         } break;
         case cb_FailedCB: {
-            if (l_and_x_buttons_are_down) {
+            if (!l_and_x_buttons_are_down) {
                 machine->state = cb_NoCB; 
             }
-        }
+        } break;
         case cb_SecondCB: {
             if (!machine->in_cb) {
                 machine->in_cb = true;
@@ -106,12 +108,12 @@ void cb_state_machine_update(idkwhatever* idk) {
             }
             if (!gameval->is_bowling)
             {
+                machine->in_cb = false;
                 machine->state = cb_NoCB;
             }
         } break;
     }
     
-    printf("%d\n", machine->state);
     
 }
 
@@ -144,7 +146,7 @@ int main(void) {
         {
             cb_state_machine_update(&idk);
         }
-        
+        Sleep(1);
     }
     
 }
