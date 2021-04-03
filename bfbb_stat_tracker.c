@@ -68,7 +68,7 @@ void cb_state_machine_update(idkwhatever* idk) {
         } break;
         case cb_FirstPress: {
             if ((gameval->buttons & BUTTON_L) == 0 && (gameval->buttons & BUTTON_L) == 0) {
-                machine->state = cb_FirstPress; 
+                machine->state = cb_FirstCB; 
             }
         } break;
         case cb_FirstCB: {
@@ -90,12 +90,24 @@ void cb_state_machine_update(idkwhatever* idk) {
                 machine->state = cb_SecondCB; 
             }
         } break;
-        case cb_SecondCB: {
+        case cb_FailedCB: {
             if ((gameval->buttons & BUTTON_L) == 0 && (gameval->buttons & BUTTON_L) == 0) {
-                machine->state = cb_SecondCB; 
+                machine->state = cb_NoCB; 
+            }
+        }
+        case cb_SecondCB: {
+            if (!machine->in_cb) {
+                machine->in_cb = true;
+                printf("CB Performed.\n");
+            }
+            if (!gameval->is_bowling)
+            {
+                machine->state = cb_NoCB;
             }
         } break;
     }
+
+    printf("%d\n", machine->state);
     
 }
 
@@ -123,8 +135,11 @@ int main(void) {
     while(true) {
         oldgameval = gameval;
         get_game_values(&reader, &gameval);
-        cb_state_machine_update(&idk);
         
+        if (oldgameval.update_dt != gameval.update_dt)
+        {
+            cb_state_machine_update(&idk);
+        }
         
     }
     
