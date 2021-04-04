@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <stdio.h>
 
+#define ArrayCount(arr) (sizeof(arr)/sizeof(arr[0]))
+
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 800
 
@@ -38,6 +40,8 @@ typedef uint64_t u64;
 #error PLEASE DEFINE A PLATFORM!!!!
 #endif
 
+#include "level_names.h"
+
 typedef struct {
     s32 startframe;
     s32 endframe;
@@ -57,6 +61,19 @@ typedef enum {
     cb_SecondPress,
     cb_SecondCB
 } cb_state;
+
+const char *get_cb_state_string(cb_state state) {
+    assert(state >= 0 && state <= cb_SecondCB);
+    const char *states[] = {
+        "No CB",
+        "Failed CB",
+        "First Press",
+        "First CB",
+        "Second Press",
+        "Second CB"
+    };
+    return states[state];
+}
 
 typedef struct {
     bool in_cb;
@@ -80,72 +97,72 @@ void cb_state_machine_call_fail_cb(idkwhatever* idk)
 
 void cb_state_machine_update(idkwhatever* idk) {
     
-    //cb_state_machine* machine = idk->machine;
-    //game_values gameval = idk->gameval;
+    cb_state_machine *machine = idk->machine;
+    game_values *gameval = &idk->gameval;
     
-    if (idk->gameval.character != 0 || !idk->gameval.can_bubble_bowl || !idk->gameval.can_cruise_bubble)
+    if (gameval->character != 0 || !gameval->can_bubble_bowl || !gameval->can_cruise_bubble)
         return;
     
-    s32 l_button_is_down = (idk->gameval.buttons & BUTTON_L) != 0;
-    s32 x_button_is_down = (idk->gameval.buttons & BUTTON_X) != 0;
+    s32 l_button_is_down = (gameval->buttons & BUTTON_L) != 0;
+    s32 x_button_is_down = (gameval->buttons & BUTTON_X) != 0;
     s32 l_and_x_buttons_are_down = l_button_is_down && x_button_is_down;
     
-    switch(idk->machine->state) {
+    switch(machine->state) {
         case cb_NoCB: {
             if (l_and_x_buttons_are_down) {
-                idk->machine->state = cb_FirstPress; 
+                machine->state = cb_FirstPress; 
             } else if (l_button_is_down || x_button_is_down) {
-                idk->machine->state = cb_FailedCB;
+                machine->state = cb_FailedCB;
             }
         } break;
         case cb_FirstPress: {
             if (!l_and_x_buttons_are_down) {
-                idk->machine->state = cb_FirstCB; 
+                machine->state = cb_FirstCB; 
             }
         } break;
         case cb_FirstCB: {
             if (l_and_x_buttons_are_down) {
-                if (idk->gameval.bubble_bowl_speed <= 1.0f) {
+                if (gameval->bubble_bowl_speed <= 1.0f) {
                     return;
-                } else if (idk->gameval.is_bowling) {
-                    idk->machine->state = cb_SecondPress;
+                } else if (gameval->is_bowling) {
+                    machine->state = cb_SecondPress;
                 }
             } else if (l_button_is_down) {
-                idk->machine->state = cb_FirstPress;
+                machine->state = cb_FirstPress;
             } else if (x_button_is_down) {
-                idk->machine->state = cb_FailedCB;
+                machine->state = cb_FailedCB;
             }
         } break;
         case cb_SecondPress: {
             if (!l_and_x_buttons_are_down) {
-                idk->machine->state = cb_SecondCB; 
+                machine->state = cb_SecondCB; 
             }
         } break;
         case cb_FailedCB: {
             if (!l_and_x_buttons_are_down) {
-                idk->machine->state = cb_NoCB; 
+                machine->state = cb_NoCB; 
             }
         } break;
         case cb_SecondCB: {
-            if (!idk->machine->in_cb) {
-                idk->machine->in_cb = true;
+            if (!machine->in_cb) {
+                machine->in_cb = true;
                 cb newcb = {0};
                 newcb.startframe = 0;
-                newcb.speed = idk->gameval.bubble_bowl_speed;
+                newcb.speed = gameval->bubble_bowl_speed;
                 newcb.endframe = 0;
                 sb_push(sb_last(idk->runs).cruise_boosts, newcb);
             }
-            if (!idk->gameval.is_bowling)
+            if (!gameval->is_bowling)
             {
-                idk->machine->in_cb = false;
-                idk->machine->state = cb_NoCB;
+                machine->in_cb = false;
+                machine->state = cb_NoCB;
             }
         } break;
     }
     
 }
 
-void update_dt_update(idkwhatever* idk)
+void update(idkwhatever* idk)
 {
     cb_state_machine_update(idk);
 }
@@ -154,66 +171,63 @@ void update_everything(struct nk_context* ctx, idkwhatever* idk);
 
 #include "win32_gdi_renderer.c"
 
+void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ...) {
+    static char buffer[2048];
+    
+    va_list args;
+    va_start(args, fmt);
+    int result = vsnprintf(buffer, 2048, fmt, args);
+    va_end(args);
+    
+    nk_label(ctx, buffer, align);
+}
+
 void update_everything(struct nk_context* ctx, idkwhatever* idk)
 {
     if(!idk->reader.is_hooked && idk->reader.should_hook)
     {
         init_memory_reader(&idk->reader);
-        printf("Dolphin hooked!\n");
     }
-
+    
     if(idk->reader.is_hooked)
     {
         idk->oldgameval = idk->gameval;
         get_game_values(&idk->reader, &idk->gameval);
-            
-            
+        
+        
         if (idk->oldgameval.update_dt != idk->gameval.update_dt)
         {
-            update_dt_update(&idk);
+            update(idk);
         }
     }
-       
+    
     float cb_speed_sum = 0.0f;
     int count = sb_count(sb_last(idk->runs).cruise_boosts);
     for (int i = 0; i < count; ++i) {
         cb_speed_sum += sb_last(idk->runs).cruise_boosts[i].speed;
     }
     float average_cruise_boost_speed = cb_speed_sum / (float)count;
-        
-    printf("\rlevel = \"%s\" | dt = %f | BB speed = %f | cb count = %d | avg cb speed = %f           ", 
-            idk->gameval.level,
-            idk->gameval.update_dt,
-            idk->gameval.bubble_bowl_speed,
-            count,
-            average_cruise_boost_speed);
-
+    
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), NK_WINDOW_NO_SCROLLBAR))
     {
         nk_layout_row_static(ctx, 30, WINDOW_WIDTH, 1);
         if (nk_button_label(ctx, (idk->reader.is_hooked)?"Unhook Dolphin":"Hook Dolphin")) {
             idk->reader.should_hook = true;
         }
-        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 3);
-        nk_label(ctx, idk->gameval.level, NK_TEXT_ALIGN_LEFT);
-        char thing[4];
-        sprintf(thing, "Machine State: %d", idk->machine->state);
-        nk_label(ctx, thing, NK_TEXT_ALIGN_LEFT);
-        char thing2[4];
-        sprintf(thing2, "Buttons: %d", idk->gameval.buttons);
-        nk_label(ctx, thing2, NK_TEXT_ALIGN_LEFT);
+        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 2);
+        if (idk->gameval.level[0]) nk_label(ctx, get_level_name(idk->gameval.level), NK_TEXT_ALIGN_LEFT);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Cruise Boost State: %s", get_cb_state_string(idk->machine->state));
+        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Buttons: %d", idk->gameval.buttons);
+        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed: %f", idk->gameval.bubble_bowl_speed);
     }
     nk_end(ctx);
-        
-    Sleep(1);
-    
-
 }
 
 
 
 int main(void) {
-
     idkwhatever idk = {0};
     cb_state_machine machine = {0};
     game_values gameval = {0};
@@ -229,6 +243,5 @@ int main(void) {
     newrun.cruise_boosts = NULL;
     sb_push(idk.runs, newrun);
     
-
     start_nk_loop(&idk);    
 }

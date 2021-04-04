@@ -6,16 +6,18 @@
 // TODO: loop through different exe names .. Dolphin.exe, DolphinWx.exe, DolphinQt2.exe
 
 #define DOLPHIN_PROCESS_NAME "Dolphin.exe"
+#define DOLPHIN_BASE_ADDRESS 0x80000000
+#define DOLPHIN_MEM_SIZE     0x2000000
 
-void byte_swap_u16(u16 *n) { *n =  _byteswap_ushort(*n); }
-void byte_swap_u32(u32 *n) { *n =  _byteswap_ulong(*n); }
-void byte_swap_u64(u64 *n) { *n =  _byteswap_uint64(*n); }
+void byte_swap_u16(u16 *n) { *n = _byteswap_ushort(*n); }
+void byte_swap_u32(u32 *n) { *n = _byteswap_ulong(*n); }
+void byte_swap_u64(u64 *n) { *n = _byteswap_uint64(*n); }
 
 u64 get_emulated_base_address(HANDLE dolphin) {
     MEMORY_BASIC_INFORMATION info;
     u8 *memory = NULL;
     while (VirtualQueryEx(dolphin, memory, &info, sizeof(info)) == sizeof(info)) {
-        if (info.RegionSize == 0x2000000 && info.Type == MEM_MAPPED) {
+        if (info.RegionSize == DOLPHIN_MEM_SIZE && info.Type == MEM_MAPPED) {
             PSAPI_WORKING_SET_EX_INFORMATION wsInfo;
             wsInfo.VirtualAddress = info.BaseAddress;
             if (QueryWorkingSetEx(dolphin, &wsInfo, sizeof(PSAPI_WORKING_SET_EX_INFORMATION))) {
@@ -103,6 +105,7 @@ typedef struct {
 #define bubble_bowl_speed_address  0x3C1F40
 #define buttons_address            0x29261E
 
+
 #define ReadGameValue(value_name) read_game_memory(reader, value_name##_address, &values->value_name, sizeof(values->value_name))  
 
 void get_game_values(memory_reader *reader, game_values *values) {
@@ -123,13 +126,11 @@ void get_game_values(memory_reader *reader, game_values *values) {
     ReadGameValue(buttons);
     byte_swap_u32(&values->buttons);
     
-    // NOTE: if the character pointer is invalid or null, we don't want to try dereferencing it.
-    //       this isn't fool-proof, but it may help stop us from trying to dereference the pointer
-    //       in the event that it's uninitialized. hopefully it's either null or invalid, in which case
-    //       this will work just fine.
+    
     u32 character_address = values->player_pointer;
-    if (character_address > 0x80000000) {
-        character_address -= 0x80000000;
+    // NOTE: check to make sure the pointer is actually in memory
+    if (character_address >= DOLPHIN_BASE_ADDRESS && character_address < DOLPHIN_BASE_ADDRESS + DOLPHIN_MEM_SIZE) {
+        character_address -= DOLPHIN_BASE_ADDRESS;
         read_game_memory(reader, character_address, &values->character, sizeof(values->character));
     }
 }

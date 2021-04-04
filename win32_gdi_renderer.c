@@ -15,7 +15,7 @@ static LRESULT CALLBACK
 WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
 {
     switch (msg) {
-    case WM_DESTROY:
+        case WM_DESTROY:
         PostQuitMessage(0);
         return 0;
     }
@@ -28,7 +28,7 @@ void start_nk_loop(idkwhatever* idk)
 {
     GdipFont* font;
     struct nk_context *ctx;
-
+    
     WNDCLASSW wc;
     RECT rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
     DWORD style = WS_OVERLAPPEDWINDOW;
@@ -36,7 +36,7 @@ void start_nk_loop(idkwhatever* idk)
     HWND wnd;
     int running = 1;
     int needs_refresh = 1;
-
+    
     /* Win32 */
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;
@@ -44,16 +44,16 @@ void start_nk_loop(idkwhatever* idk)
     wc.hInstance = GetModuleHandleW(0);
     wc.hIcon = LoadIcon(NULL, IDI_APPLICATION);
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
-    wc.lpszClassName = L"NuklearWindowClass";
+    wc.lpszClassName = L"BFBB Stat Tracker Window Class :))))";
     RegisterClassW(&wc);
-
+    
     AdjustWindowRectEx(&rect, style, FALSE, exstyle);
-
+    
     wnd = CreateWindowExW(exstyle, wc.lpszClassName, L"BFBB Stat Tracker",
-        style | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
-        rect.right - rect.left, rect.bottom - rect.top,
-        NULL, NULL, wc.hInstance, NULL);
-
+                          style | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
+                          rect.right - rect.left, rect.bottom - rect.top,
+                          NULL, NULL, wc.hInstance, NULL);
+    
     /* GUI */
     ctx = nk_gdip_init(wnd, WINDOW_WIDTH, WINDOW_HEIGHT);
     font = nk_gdipfont_create("Arial", 12);
@@ -79,10 +79,12 @@ void start_nk_loop(idkwhatever* idk)
         }
         needs_refresh = 1;
         nk_input_end(ctx);
-
+        
         update_everything(ctx, idk);
-
+        
         nk_gdip_render(NK_ANTI_ALIASING_ON, nk_rgb(30,30,30));
+        
+        Sleep(3);
     }
     nk_gdipfont_del(font);
     nk_gdip_shutdown();
