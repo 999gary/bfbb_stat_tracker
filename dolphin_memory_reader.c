@@ -34,11 +34,14 @@ u64 get_emulated_base_address(HANDLE dolphin) {
 typedef struct memory_reader memory_reader;
 struct memory_reader {
     bool is_hooked;
+    bool should_hook;
     HANDLE dolphin;
     size_t emulated_base_address;
 };
 
 void init_memory_reader(memory_reader *reader) {
+    if (!reader->should_hook || reader->is_hooked)
+        return;
     char *p_name = DOLPHIN_PROCESS_NAME;
     HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     PROCESSENTRY32 structprocsnapshot = { 0 };
