@@ -10,6 +10,16 @@
 #define WINDOW_WIDTH 500
 #define WINDOW_HEIGHT 800
 
+
+struct nk_context;
+typedef struct idkwhatever idkwhatever;
+
+void update_everything(struct nk_context* ctx, idkwhatever* idk);
+
+#include "win32_gdi_renderer.c"
+#include "style.c"
+
+
 #include "stretchy_buffer.h"
 
 typedef int8_t  s8;
@@ -50,6 +60,8 @@ typedef struct {
 
 typedef struct {
     u32 frame;
+    bool is_done;
+    u32 endframe;
     cb *cruise_boosts;
 } run;
 
@@ -80,14 +92,22 @@ typedef struct {
     cb_state state;
 } cb_state_machine;
 
-typedef struct {
+struct idkwhatever {
     cb_state_machine* machine;
     game_values gameval;
     game_values oldgameval;
     memory_reader reader;
     run* runs;
-} idkwhatever;
+};
 
+float cb_speed_average(idkwhatever* idk) {
+    float cb_speed_sum = 0.0f;
+    int count = sb_count(sb_last(idk->runs).cruise_boosts);
+    for (int i = 0; i < count; ++i) {
+        cb_speed_sum += sb_last(idk->runs).cruise_boosts[i].speed;
+    }
+    return cb_speed_sum / (float)count;
+}
 
 void cb_state_machine_call_fail_cb(idkwhatever* idk)
 {
@@ -162,14 +182,31 @@ void cb_state_machine_update(idkwhatever* idk) {
     
 }
 
-void update(idkwhatever* idk)
-{
-    cb_state_machine_update(idk);
+void run_update(idkwhatever* idk) {
+    if(sb_count(idk->runs) >= 1 && !sb_last(idk->runs).is_done)
+        sb_last(idk->runs).frame++;
 }
 
-void update_everything(struct nk_context* ctx, idkwhatever* idk);
+void start_run(idkwhatever* idk) {
+    run newrun = {0};
+    newrun.frame = 0;
+    newrun.cruise_boosts = NULL;
+    sb_push(idk->runs, newrun);
+}
 
-#include "win32_gdi_renderer.c"
+void end_run(idkwhatever* idk) {
+    run* currentrun = &sb_last(idk->runs);
+    if (!currentrun->is_done) {
+        currentrun->is_done = true;
+        currentrun->endframe = currentrun->frame;
+    }
+}
+
+void update(idkwhatever* idk) {
+    cb_state_machine_update(idk);
+    run_update(idk);
+}
+
 
 void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ...) {
     static char buffer[2048];
@@ -182,11 +219,15 @@ void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ..
     nk_label(ctx, buffer, align);
 }
 
+
+
 void update_everything(struct nk_context* ctx, idkwhatever* idk)
 {
+    idk->reader.should_hook = true;
     if(!idk->reader.is_hooked && idk->reader.should_hook)
     {
         init_memory_reader(&idk->reader);
+        idk->reader.should_hook = false;
     }
     
     if(idk->reader.is_hooked)
@@ -200,13 +241,7 @@ void update_everything(struct nk_context* ctx, idkwhatever* idk)
             update(idk);
         }
     }
-    
-    float cb_speed_sum = 0.0f;
-    int count = sb_count(sb_last(idk->runs).cruise_boosts);
-    for (int i = 0; i < count; ++i) {
-        cb_speed_sum += sb_last(idk->runs).cruise_boosts[i].speed;
-    }
-    float average_cruise_boost_speed = cb_speed_sum / (float)count;
+
     
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, WINDOW_WIDTH, WINDOW_HEIGHT), NK_WINDOW_NO_SCROLLBAR))
     {
@@ -214,34 +249,61 @@ void update_everything(struct nk_context* ctx, idkwhatever* idk)
         if (nk_button_label(ctx, (idk->reader.is_hooked)?"Unhook Dolphin":"Hook Dolphin")) {
             idk->reader.should_hook = true;
         }
-        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 2);
+        nk_layout_row_static(ctx, 30, WINDOW_WIDTH, 2);
+        if (sb_count(idk->runs) == 0 || sb_last(idk->runs).is_done) {
+            if (nk_button_label(ctx, "Start Run")) {
+                start_run(idk);
+            }
+        } else if(sb_count(idk->runs) >= 1 && !sb_last(idk->runs).is_done) {
+            if (nk_button_label(ctx, "End Run")) {
+                end_run(idk);
+            }
+        }
+        nk_layout_row_static(ctx, 30, WINDOW_WIDTH/2, 2);
         if (idk->gameval.level[0]) nk_label(ctx, get_level_name(idk->gameval.level), NK_TEXT_ALIGN_LEFT);
-        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Cruise Boost State: %s", get_cb_state_string(idk->machine->state));
         nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Buttons: %d", idk->gameval.buttons);
         nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed: %f", idk->gameval.bubble_bowl_speed);
+        
+        if(sb_count(idk->runs) >= 1 && !sb_last(idk->runs).is_done) {
+            run currentrun = sb_last(idk->runs);
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
+            nk_label(ctx, "Current Run:", NK_TEXT_ALIGN_LEFT);
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/2, 2);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Current Frame: %d", currentrun.frame);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(currentrun.cruise_boosts));
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/2, 2);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %f", cb_speed_average(idk));
+        } else if (sb_count(idk->runs) >= 1) {
+            run currentrun = sb_last(idk->runs);
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/3, 1);
+            nk_label(ctx, "Last Run:", NK_TEXT_ALIGN_LEFT);
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/2, 2);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", currentrun.endframe);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(currentrun.cruise_boosts));
+            nk_layout_row_static(ctx, 30, WINDOW_WIDTH/2, 2);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %f", cb_speed_average(idk));
+        }
+        set_style(ctx, THEME_BOB);
     }
     nk_end(ctx);
 }
 
 
 
-int main(void) {
+int WinMain(void) {
     idkwhatever idk = {0};
     cb_state_machine machine = {0};
     game_values gameval = {0};
     game_values oldgameval = {0};
+    struct nk_font_atlas atlas;
     memory_reader reader = {0};
     idk.machine = &machine;
     idk.gameval = gameval;
     idk.oldgameval = oldgameval;
     idk.reader = reader;
     idk.runs = NULL;
-    run newrun = {0};
-    newrun.frame = 0;
-    newrun.cruise_boosts = NULL;
-    sb_push(idk.runs, newrun);
     
     start_nk_loop(&idk);    
 }

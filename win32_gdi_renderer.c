@@ -1,12 +1,14 @@
 #include <time.h>
 #include <limits.h>
 
+#include "soonge_font.h"
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
 #define NK_IMPLEMENTATION
+#define NK_INCLUDE_FONT_BAKING
 #define NK_GDIP_IMPLEMENTATION
 #include "nuklear.h"
 #include "nuklear_gdip.h"
@@ -24,6 +26,7 @@ WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam)
     return DefWindowProcW(wnd, msg, wparam, lparam);
 }
 
+
 void start_nk_loop(idkwhatever* idk)
 {
     GdipFont* font;
@@ -31,7 +34,7 @@ void start_nk_loop(idkwhatever* idk)
     
     WNDCLASSW wc;
     RECT rect = { 0, 0, WINDOW_WIDTH, WINDOW_HEIGHT };
-    DWORD style = WS_OVERLAPPEDWINDOW;
+    DWORD style = WS_OVERLAPPEDWINDOW^WS_THICKFRAME;
     DWORD exstyle = WS_EX_APPWINDOW;    
     HWND wnd;
     int running = 1;
@@ -56,7 +59,7 @@ void start_nk_loop(idkwhatever* idk)
     
     /* GUI */
     ctx = nk_gdip_init(wnd, WINDOW_WIDTH, WINDOW_HEIGHT);
-    font = nk_gdipfont_create("Arial", 12);
+    font = nk_gdipfont_create_from_memory(soonge, sizeof(soonge), 17);
     nk_gdip_set_font(font);
     while (running)
     {
