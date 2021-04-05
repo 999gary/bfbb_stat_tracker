@@ -1,8 +1,4 @@
 
-#include <windows.h>
-#include <tlhelp32.h>
-#include <psapi.h>
-
 // TODO: loop through different exe names .. Dolphin.exe, DolphinWx.exe, DolphinQt2.exe
 
 #define DOLPHIN_PROCESS_NAME "Dolphin.exe"
@@ -84,6 +80,7 @@ typedef struct {
     bool is_bowling;
     bool can_cruise_bubble;
     bool can_bubble_bowl;
+    s32 frame_oscillator;
     u8 spat_count;
     u32 player_pointer;
     u32 character;
@@ -98,6 +95,7 @@ typedef struct {
 #define is_bowling_address         0x3C2047
 #define can_cruise_bubble_address  0x3C0F16
 #define can_bubble_bowl_address    0x3C0F15
+#define frame_oscillator_address   0x3CB854
 #define spat_count_address         0x3C205F
 #define player_pointer_address     0x3C0F1C
 #define level_address              0x28060B
@@ -112,6 +110,10 @@ void get_game_values(memory_reader *reader, game_values *values) {
     ReadGameValue(is_bowling);
     ReadGameValue(can_cruise_bubble);
     ReadGameValue(can_bubble_bowl);
+    
+    ReadGameValue(frame_oscillator);
+    byte_swap_u32(&values->frame_oscillator);
+    
     ReadGameValue(spat_count);
     
     ReadGameValue(player_pointer);
