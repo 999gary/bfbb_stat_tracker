@@ -106,6 +106,21 @@ typedef struct {
 
 #define ReadGameValue(value_name) read_game_memory(reader, value_name##_address, &values->value_name, sizeof(values->value_name))  
 
+void read_game_memory_pointer(memory_reader *reader, u64 address, void *result, size_t size) {
+    // NOTE: check to make sure the pointer is actually in memory
+    if (address >= DOLPHIN_BASE_ADDRESS && address < DOLPHIN_BASE_ADDRESS + DOLPHIN_MEM_SIZE) {
+        address -= DOLPHIN_BASE_ADDRESS;
+        read_game_memory(reader, address, result, size);
+    }
+}
+
+u32 read_game_memory_get_pointer(memory_reader *reader, u64 address) {
+    u32 result = 0;
+    read_game_memory_pointer(reader, address, &result, sizeof(u32));
+    byte_swap_u32(&result);
+    return result;
+}
+
 void get_game_values(memory_reader *reader, game_values *values) {
     ReadGameValue(is_bowling);
     ReadGameValue(can_cruise_bubble);
@@ -128,11 +143,14 @@ void get_game_values(memory_reader *reader, game_values *values) {
     ReadGameValue(buttons);
     byte_swap_u32(&values->buttons);
     
-    
     u32 character_address = values->player_pointer;
-    // NOTE: check to make sure the pointer is actually in memory
-    if (character_address >= DOLPHIN_BASE_ADDRESS && character_address < DOLPHIN_BASE_ADDRESS + DOLPHIN_MEM_SIZE) {
-        character_address -= DOLPHIN_BASE_ADDRESS;
-        read_game_memory(reader, character_address, &values->character, sizeof(values->character));
+    read_game_memory_pointer(reader, character_address, &values->character, sizeof(values->character));
+    
+    u32 model_instance_spongebob_pointer_address = 0x3c1bf8;
+    
+    u32 anim_id_address = read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, model_instance_spongebob_pointer_address) + 12) + 8) + 4) + 8;
+    if (anim_id_address != 8) {
+        ReadGameValue(anim_id);
+        byte_swap_u32(&values->anim_id);
     }
 }

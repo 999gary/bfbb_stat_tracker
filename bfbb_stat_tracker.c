@@ -51,6 +51,7 @@ typedef struct {
     float update_dt;
     float bubble_bowl_speed;
     u32 buttons;
+    u32 anim_id;
 } game_values;
 
 #if  defined(DOLPHIN)
@@ -272,6 +273,8 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             nk_layout_row_static(ctx, 30, window_width/2, 2);
             nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", cb_speed_average(stat_tracker));
         }
+        nk_layout_row_static(ctx, 30, window_width/2, 2);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Animation Num: %u", stat_tracker->gameval.anim_id);
         set_style(ctx, THEME_BOB);
     }
     nk_end(ctx);
