@@ -1,5 +1,6 @@
 
 #include "soonge_font.h"
+#include "opensans_font.h"
 
 #include "nuklear_gdip.h"
 
@@ -62,7 +63,7 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     
     struct nk_context *ctx = idk->ctx;
     
-    font = nk_gdipfont_create_from_memory(soonge, sizeof(soonge), 17);
+    font = nk_gdipfont_create_from_memory(OpenSansRegular, sizeof(OpenSansRegular), 15);
     nk_gdip_set_font(font);
     while (running)
     {

@@ -103,6 +103,8 @@ typedef struct {
 #define update_dt_address          0x3CAAD4
 #define bubble_bowl_speed_address  0x3C1F40
 #define buttons_address            0x29261E
+#define health_address             0x3c1c04
+#define can_jump_address           0x3c2020
 
 
 #define ReadGameValue(value_name) read_game_memory(reader, value_name##_address, &values->value_name, sizeof(values->value_name))  
@@ -127,12 +129,17 @@ void get_game_values(memory_reader *reader, game_values *values) {
     
     ReadGameValue(can_cruise_bubble);
     ReadGameValue(can_bubble_bowl);
+    ReadGameValue(can_jump);
+    byte_swap_u32(&values->can_jump);
     
     ReadGameValue(frame_oscillator);
     byte_swap_u32(&values->frame_oscillator);
     
     ReadGameValue(spat_count);
     
+    ReadGameValue(health);
+    byte_swap_u32(&values->health);
+
     ReadGameValue(player_pointer);
     byte_swap_u32(&values->player_pointer);
     

@@ -17,6 +17,13 @@ typedef struct {
 } run;
 
 typedef enum {
+    of_Undamaged,
+    of_DamagedPreFrame,
+    of_DamagedOnFrame,
+    of_DamagedPostFrame
+} of_state;
+
+typedef enum {
     cb_NoCB,
     cb_FailedCB,
     cb_FirstPress,
@@ -24,6 +31,17 @@ typedef enum {
     cb_SecondPress,
     cb_SecondCB
 } cb_state;
+
+const char *get_of_state_string(of_state state) {
+    assert(state >= 0 && state <= of_DamagedPostFrame);
+    const char *states[] = {
+        "of_Undamaged",
+        "of_DamagedPreFrame",
+        "of_DamagedOnFrame",
+        "of_DamagedPostFrame"
+    };
+    return states[state];
+}
 
 const char *get_cb_state_string(cb_state state) {
     assert(state >= 0 && state <= cb_SecondCB);
@@ -39,12 +57,19 @@ const char *get_cb_state_string(cb_state state) {
 }
 
 typedef struct {
+    bool should_update_animation_change;
+    of_state state;
+} of_state_machine;
+
+
+typedef struct {
     bool in_cb;
     cb_state state;
 } cb_state_machine;
 
 typedef struct {
-    cb_state_machine* machine;
+    cb_state_machine* cb_state_machine;
+    of_state_machine* of_state_machine;
     game_values gameval;
     game_values oldgameval;
     memory_reader reader;
