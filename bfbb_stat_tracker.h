@@ -11,6 +11,7 @@ typedef struct {
 } cb;
 
 typedef struct {
+    player_bools bool_counts;
     u64 frame_count;
     cb *cruise_boosts;
 } run;

@@ -92,6 +92,7 @@ typedef struct {
 #endif
 
 #define is_loading_address         0x3CB7B3
+#define bools_address              0x3C2030
 #define is_bowling_address         0x3C2047
 #define can_cruise_bubble_address  0x3C0F16
 #define can_bubble_bowl_address    0x3C0F15
@@ -122,7 +123,8 @@ u32 read_game_memory_get_pointer(memory_reader *reader, u64 address) {
 }
 
 void get_game_values(memory_reader *reader, game_values *values) {
-    ReadGameValue(is_bowling);
+    ReadGameValue(bools);
+    
     ReadGameValue(can_cruise_bubble);
     ReadGameValue(can_bubble_bowl);
     
@@ -149,8 +151,9 @@ void get_game_values(memory_reader *reader, game_values *values) {
     u32 model_instance_spongebob_pointer_address = 0x3c1bf8 + DOLPHIN_BASE_ADDRESS;
     
     // YEP
-    u32 anim_id_address = read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, model_instance_spongebob_pointer_address) + 12) + 8) + 4) + 8;
-    if (anim_id_address != 8) {
+    u32 x_anim_state_address = read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, model_instance_spongebob_pointer_address) + 12) + 8) + 4); 
+    if (x_anim_state_address) {
+        u32 anim_id_address = x_anim_state_address + 8;
         read_game_memory_pointer(reader, anim_id_address, &values->anim_id, sizeof(values->anim_id));
         byte_swap_u32(&values->anim_id);
     }
