@@ -2,6 +2,7 @@
 #define BFBB_STAT_TRACKER_H
 
 #define BUTTON_L   64
+#define BUTTON_A  256
 #define BUTTON_X 1024
 
 typedef struct {

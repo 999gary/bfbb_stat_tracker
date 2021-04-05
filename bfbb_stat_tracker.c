@@ -69,6 +69,11 @@ typedef struct {
     u32 anim_id;
 } game_values;
 
+int of_counter = 0;
+int of_frameon = 0;
+int of_framepress = 0;
+bool should_count = false;
+
 #if  defined(DOLPHIN)
 #include "dolphin_memory_reader.c"
 #elif defined(XBOX)
@@ -109,7 +114,15 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     if (gameval->character != 0)
         return;
 
-        
+    if (should_count) {
+        of_counter++;
+    }
+    if ((gameval->buttons & BUTTON_A) != 0 && should_count)
+    {
+        of_framepress = of_counter;
+    }
+
+    
 
     switch(of_state_machine->state) {
         case of_Undamaged: {
@@ -118,20 +131,31 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
                 gameval->anim_id == 4189683633 || 
                 gameval->anim_id == 4189683634 || 
                 gameval->anim_id == 4189683635 || 
-                gameval->anim_id == 4189683636))
-                of_state_machine->state = of_DamagedPreFrame;
+                gameval->anim_id == 4189683636)) {
+                    of_state_machine->state = of_DamagedPreFrame;
+                    of_frameon = 0;
+                    of_framepress = 0;
+                    of_counter = 0;
+                    should_count = true;
+                }
         } break;
         case of_DamagedPreFrame: {
             if (gameval->anim_id == 1822369153)
+            {
+                of_frameon = of_counter;
                 of_state_machine->state = of_DamagedOnFrame;
+            }
         } break;
         case of_DamagedOnFrame: {
             if (gameval->anim_id == 1164637556)
                 of_state_machine->state = of_DamagedPostFrame;
         } break;
         case of_DamagedPostFrame: {
-            if (gameval->anim_id != 1164637556)
+            if (gameval->anim_id != 1164637556){
                 of_state_machine->state = of_Undamaged;
+                should_count = false;
+            }
+                
         }
     }
     
@@ -149,6 +173,11 @@ void cb_state_machine_update(bfbb_stat_tracker* idk) {
     s32 l_button_is_down = (gameval->buttons & BUTTON_L) != 0;
     s32 x_button_is_down = (gameval->buttons & BUTTON_X) != 0;
     s32 l_and_x_buttons_are_down = l_button_is_down && x_button_is_down;
+
+    if(cb_state_machine->state != cb_NoCB && gameval->anim_id == 918135972)
+    {
+        cb_state_machine->state = cb_FailedCB;
+    }
     
     switch(cb_state_machine->state) {
         case cb_NoCB: {
@@ -158,8 +187,13 @@ void cb_state_machine_update(bfbb_stat_tracker* idk) {
                 cb_state_machine->state = cb_FailedCB;
             }
         } break;
+        case cb_FailedCB: {
+            if (!l_button_is_down && !x_button_is_down) {
+                cb_state_machine->state = cb_NoCB; 
+            }
+        } break;
         case cb_FirstPress: {
-            if (!l_and_x_buttons_are_down) {
+            if (!l_button_is_down && !x_button_is_down) {
                 cb_state_machine->state = cb_FirstCB; 
             }
         } break;
@@ -167,8 +201,7 @@ void cb_state_machine_update(bfbb_stat_tracker* idk) {
             if (l_and_x_buttons_are_down) {
                 if (gameval->bubble_bowl_speed <= 1.0f) {
                     return;
-                } else if (gameval->bools.is_bubble_bowling && (gameval->anim_id == 1291389524 || 
-                                                                gameval->anim_id == 1679544279)) {
+                } else if (gameval->bools.is_bubble_bowling) {
                     cb_state_machine->state = cb_SecondPress;
                 }
             } else if (l_button_is_down) {
@@ -178,15 +211,12 @@ void cb_state_machine_update(bfbb_stat_tracker* idk) {
             }
         } break;
         case cb_SecondPress: {
-            if (l_and_x_buttons_are_down) {
+            if (l_and_x_buttons_are_down && (gameval->anim_id == 1291389524 || 
+                                            gameval->anim_id == 1679544279)) {
                 cb_state_machine->state = cb_SecondCB; 
             }
         } break;
-        case cb_FailedCB: {
-            if (!l_and_x_buttons_are_down) {
-                cb_state_machine->state = cb_NoCB; 
-            }
-        } break;
+
         case cb_SecondCB: {
             if (!cb_state_machine->in_cb) {
                 cb_state_machine->in_cb = true;
@@ -272,9 +302,9 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 }
             }
         }
-        if (stat_tracker->oldgameval.buttons != stat_tracker->gameval.buttons) {
+        /*if (stat_tracker->oldgameval.buttons != stat_tracker->gameval.buttons) {
             cb_state_machine_update(stat_tracker);
-        }
+        }*/
 
         if (stat_tracker->oldgameval.anim_id != stat_tracker->gameval.anim_id) {
                 
@@ -316,6 +346,8 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB State: %d", stat_tracker->cb_state_machine->state);
         nk_layout_row_static(ctx, 30, window_width/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "OF State: %d", stat_tracker->of_state_machine->state);
+        nk_layout_row_static(ctx, 30, window_width/3, 1);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "OF Missed: %d", of_frameon-of_framepress);
         
         if(stat_tracker->is_in_run) {
             run currentrun = stat_tracker->current_run;
