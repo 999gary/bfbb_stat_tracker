@@ -146,11 +146,12 @@ void get_game_values(memory_reader *reader, game_values *values) {
     u32 character_address = values->player_pointer;
     read_game_memory_pointer(reader, character_address, &values->character, sizeof(values->character));
     
-    u32 model_instance_spongebob_pointer_address = 0x3c1bf8;
+    u32 model_instance_spongebob_pointer_address = 0x3c1bf8 + DOLPHIN_BASE_ADDRESS;
     
+    // YEP
     u32 anim_id_address = read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, read_game_memory_get_pointer(reader,  read_game_memory_get_pointer(reader, model_instance_spongebob_pointer_address) + 12) + 8) + 4) + 8;
     if (anim_id_address != 8) {
-        ReadGameValue(anim_id);
+        read_game_memory_pointer(reader, anim_id_address, &values->anim_id, sizeof(values->anim_id));
         byte_swap_u32(&values->anim_id);
     }
 }
