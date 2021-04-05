@@ -93,27 +93,13 @@ bool should_count = false;
 #include "style.c"
 #include "level_names.h"
 
-// TODO: store average and add it incrementally so this isn't O(n)!
-float cb_speed_average(bfbb_stat_tracker *tracker) {
-    float cb_speed_sum = 0.0f;
-    run current_run = tracker->current_run;
-    cb *cruise_boosts = current_run.cruise_boosts;
-    int count = sb_count(cruise_boosts);
-    if (count == 0) return 0.0f;
-    for (int i = 0; i < count; ++i) {
-        cb_speed_sum += cruise_boosts[i].speed;
-    }
-    return cb_speed_sum / (float)count;
-}
-
-
 void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     of_state_machine *of_state_machine = stat_tracker->of_state_machine;
     game_values *gameval = &stat_tracker->gameval;
-
+    
     if (gameval->character != 0)
         return;
-
+    
     if (should_count) {
         of_counter++;
     }
@@ -121,23 +107,21 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     {
         of_framepress = of_counter;
     }
-
     
-
     switch(of_state_machine->state) {
         case of_Undamaged: {
             //TODO: check for damage animation.
             if ((gameval->anim_id == 4189683632 || 
-                gameval->anim_id == 4189683633 || 
-                gameval->anim_id == 4189683634 || 
-                gameval->anim_id == 4189683635 || 
-                gameval->anim_id == 4189683636)) {
-                    of_state_machine->state = of_DamagedPreFrame;
-                    of_frameon = 0;
-                    of_framepress = 0;
-                    of_counter = 0;
-                    should_count = true;
-                }
+                 gameval->anim_id == 4189683633 || 
+                 gameval->anim_id == 4189683634 || 
+                 gameval->anim_id == 4189683635 || 
+                 gameval->anim_id == 4189683636)) {
+                of_state_machine->state = of_DamagedPreFrame;
+                of_frameon = 0;
+                of_framepress = 0;
+                of_counter = 0;
+                should_count = true;
+            }
         } break;
         case of_DamagedPreFrame: {
             if (gameval->anim_id == 1822369153)
@@ -155,84 +139,10 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
                 of_state_machine->state = of_Undamaged;
                 should_count = false;
             }
-                
+            
         }
     }
     
-}
-
-
-void cb_state_machine_update(bfbb_stat_tracker* idk) {
-    
-    cb_state_machine *cb_state_machine = idk->cb_state_machine;
-    game_values *gameval = &idk->gameval;
-    
-    if (gameval->character != 0 || !gameval->can_bubble_bowl || !gameval->can_cruise_bubble)
-        return;
-    
-    s32 l_button_is_down = (gameval->buttons & BUTTON_L) != 0;
-    s32 x_button_is_down = (gameval->buttons & BUTTON_X) != 0;
-    s32 l_and_x_buttons_are_down = l_button_is_down && x_button_is_down;
-
-    if(cb_state_machine->state != cb_NoCB && gameval->anim_id == 918135972)
-    {
-        cb_state_machine->state = cb_FailedCB;
-    }
-    
-    switch(cb_state_machine->state) {
-        case cb_NoCB: {
-            if (l_and_x_buttons_are_down) {
-                cb_state_machine->state = cb_FirstPress; 
-            } else if (l_button_is_down || x_button_is_down) {
-                cb_state_machine->state = cb_FailedCB;
-            }
-        } break;
-        case cb_FailedCB: {
-            if (!l_button_is_down && !x_button_is_down) {
-                cb_state_machine->state = cb_NoCB; 
-            }
-        } break;
-        case cb_FirstPress: {
-            if (!l_button_is_down && !x_button_is_down) {
-                cb_state_machine->state = cb_FirstCB; 
-            }
-        } break;
-        case cb_FirstCB: {
-            if (l_and_x_buttons_are_down) {
-                if (gameval->bubble_bowl_speed <= 1.0f) {
-                    return;
-                } else if (gameval->bools.is_bubble_bowling) {
-                    cb_state_machine->state = cb_SecondPress;
-                }
-            } else if (l_button_is_down) {
-                cb_state_machine->state = cb_FirstPress;
-            } else if (x_button_is_down) {
-                cb_state_machine->state = cb_FailedCB;
-            }
-        } break;
-        case cb_SecondPress: {
-            if (l_and_x_buttons_are_down && (gameval->anim_id == 1291389524 || 
-                                            gameval->anim_id == 1679544279)) {
-                cb_state_machine->state = cb_SecondCB; 
-            }
-        } break;
-
-        case cb_SecondCB: {
-            if (!cb_state_machine->in_cb) {
-                cb_state_machine->in_cb = true;
-            }
-            if (!gameval->bools.is_bubble_bowling)
-            {
-                cb_state_machine->in_cb = false;
-                cb_state_machine->state = cb_NoCB;
-            }
-        } break;
-    }
-    
-}
-
-void run_update(bfbb_stat_tracker *tracker) {
-    tracker->current_run.frame_count++;
 }
 
 void start_run(bfbb_stat_tracker *tracker) {
@@ -241,8 +151,8 @@ void start_run(bfbb_stat_tracker *tracker) {
 }
 
 void end_run(bfbb_stat_tracker *tracker) {
-    tracker->is_in_run = false;
     sb_push(tracker->runs, tracker->current_run);
+    tracker->is_in_run = false;
 }
 
 
@@ -274,24 +184,29 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         stat_tracker->oldgameval = stat_tracker->gameval;
         get_game_values(&stat_tracker->reader, &stat_tracker->gameval);
         
-        
         run *current_run = &stat_tracker->current_run;
         cb *current_cb = &stat_tracker->current_cb;
         
+        game_values *gameval = &stat_tracker->gameval;
+        
         if (stat_tracker->oldgameval.frame_oscillator != stat_tracker->gameval.frame_oscillator)
         {
-            cb_state_machine_update(stat_tracker);
-            of_state_machine_update(stat_tracker);
-            run_update(stat_tracker);
-            
-            if (stat_tracker->cb_state_machine->state == cb_SecondCB) {
+            if ((gameval->anim_id == 1291389524 || gameval->anim_id == 1679544279) && 
+                gameval->bools.is_bubble_bowling &&
+                gameval->bubble_bowl_speed >= 1.0f) {
                 if (!stat_tracker->is_in_cb) {
                     stat_tracker->is_in_cb = true;
-                    current_cb->speed = stat_tracker->gameval.bubble_bowl_speed;
+                    float speed = stat_tracker->gameval.bubble_bowl_speed;
+                    current_cb->speed = speed;
                     if (stat_tracker->is_in_run) {
                         current_cb->startframe = current_run->frame_count;
+                        float av = current_run->cb_average_speed;
+                        int count = sb_count(current_run->cruise_boosts);
+                        av = (av*count + speed) / (count + 1);
+                        current_run->cb_average_speed = av;
                     }
                 }
+                stat_tracker->is_in_cb = true;
             } else {
                 if (stat_tracker->is_in_cb) {
                     stat_tracker->is_in_cb = false;
@@ -300,17 +215,22 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         sb_push(current_run->cruise_boosts, *current_cb);
                     }
                 }
+                stat_tracker->is_in_cb = false;
             }
+            
+            
+            of_state_machine_update(stat_tracker);
+            
+            stat_tracker->current_run.frame_count++;
         }
         /*if (stat_tracker->oldgameval.buttons != stat_tracker->gameval.buttons) {
             cb_state_machine_update(stat_tracker);
         }*/
-
+        
         if (stat_tracker->oldgameval.anim_id != stat_tracker->gameval.anim_id) {
-                
+            
         }
         
-        game_values *gameval = &stat_tracker->gameval;
         game_values *old = &stat_tracker->oldgameval;
         for (s32 i = 0; i < ArrayCount(gameval->bools.all); ++i) {
             if (old->bools.all[i] == 0 && gameval->bools.all[i] != 0) {
@@ -343,8 +263,6 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         nk_layout_row_static(ctx, 30, window_width/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed: %g", stat_tracker->gameval.bubble_bowl_speed);
         nk_layout_row_static(ctx, 30, window_width/3, 1);
-        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB State: %d", stat_tracker->cb_state_machine->state);
-        nk_layout_row_static(ctx, 30, window_width/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "OF State: %d", stat_tracker->of_state_machine->state);
         nk_layout_row_static(ctx, 30, window_width/3, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "OF Missed: %d", of_frameon-of_framepress);
@@ -358,7 +276,11 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(currentrun.cruise_boosts) + stat_tracker->is_in_cb);
             
             nk_layout_row_static(ctx, 30, window_width/2, 2);
-            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", cb_speed_average(stat_tracker));
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %.20f", currentrun.cb_average_speed);
+            
+            
+            nk_layout_row_static(ctx, 30, window_width/2, 2);
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Current CB Speed: %g", stat_tracker->current_cb.speed);
             
             // YEP
             
@@ -393,7 +315,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
             nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts));
             nk_layout_row_static(ctx, 30, window_width/2, 2);
-            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", cb_speed_average(stat_tracker));
+            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
         }
         nk_layout_row_static(ctx, 30, window_width/2, 1);
         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Animation ID: %u", stat_tracker->gameval.anim_id);
@@ -406,13 +328,11 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
 
 int WinMain(void) {
     bfbb_stat_tracker stat_tracker = {0};
-    cb_state_machine cb_state_machine = {0};
     of_state_machine of_state_machine = {0};
     game_values gameval = {0};
     game_values oldgameval = {0};
     struct nk_font_atlas atlas;
     memory_reader reader = {0};
-    stat_tracker.cb_state_machine = &cb_state_machine;
     stat_tracker.of_state_machine = &of_state_machine;
     stat_tracker.gameval = gameval;
     stat_tracker.oldgameval = oldgameval;
