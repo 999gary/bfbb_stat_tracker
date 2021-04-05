@@ -109,13 +109,6 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     if (gameval->character != 0)
         return;
 
-    if ((stat_tracker->oldgameval.anim_id != 4189683632 || 
-        stat_tracker->oldgameval.anim_id != 4189683633 || 
-        stat_tracker->oldgameval.anim_id != 4189683634 || 
-        stat_tracker->oldgameval.anim_id != 4189683635 || 
-        stat_tracker->oldgameval.anim_id != 4189683636) && gameval->anim_id == 1822369153) {
-            return;
-        }
         
 
     switch(of_state_machine->state) {
@@ -133,12 +126,12 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
                 of_state_machine->state = of_DamagedOnFrame;
         } break;
         case of_DamagedOnFrame: {
-            if (gameval->anim_id == 1165637556)
-            of_state_machine->state = of_DamagedPostFrame;
+            if (gameval->anim_id == 1164637556)
+                of_state_machine->state = of_DamagedPostFrame;
         } break;
         case of_DamagedPostFrame: {
-            if (gameval->anim_id != 1165637556)
-            of_state_machine->state = of_Undamaged;
+            if (gameval->anim_id != 1164637556)
+                of_state_machine->state = of_Undamaged;
         }
     }
     
