@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tlhelp32.h>
 #include <psapi.h>
@@ -27,6 +28,7 @@ typedef uint64_t u64;
 
 s32 window_width = 500;
 s32 window_height = 800;
+
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -82,13 +84,16 @@ bool should_count = false;
 #error PLEASE DEFINE A PLATFORM!!!!
 #endif
 
-#include "bfbb_stat_tracker.h"
+
+#include "networking.c"
+//#include "bfbb_stat_tracker.h"
 
 #if defined(_WIN32)
 #include "win32_gdi_renderer.c"
 #else
 #error UNKNOWN RENDER PLATFORM!!!!
 #endif
+
 
 #include "style.c"
 #include "level_names.h"
@@ -169,6 +174,7 @@ void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ..
 
 void update_and_render(bfbb_stat_tracker *stat_tracker){
     struct nk_context *ctx = stat_tracker->ctx;
+    strncpy(&stat_tracker->buffer, "getcurrenttimerphase\r\n", 256);
     
     stat_tracker->reader.should_hook = true;
     if(!stat_tracker->reader.is_hooked && stat_tracker->reader.should_hook)
@@ -189,6 +195,19 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         
         if (stat_tracker->oldgameval.frame_oscillator != stat_tracker->gameval.frame_oscillator)
         {
+            if(stat_tracker->counter == 60) {
+                stat_tracker->counter = 0;
+                strncpy(&stat_tracker->oldresponse, stat_tracker->response, 256);
+                memset(stat_tracker->response, 0, 256);
+                init_client(stat_tracker);
+                run_client(stat_tracker);
+            }
+            if(stat_tracker->oldresponse[0] == 'N' && stat_tracker->response[0] == 'R') {
+                start_run(stat_tracker);
+            }
+            if(stat_tracker->is_in_run && stat_tracker->oldresponse[0] == 'R' && stat_tracker->response[0] == 'N') {
+                end_run(stat_tracker);
+            }
             if ((gameval->anim_id == 1291389524 || gameval->anim_id == 1679544279) && 
                 gameval->bools.is_bubble_bowling &&
                 gameval->bubble_bowl_speed >= 1.0f) {
@@ -220,6 +239,8 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             of_state_machine_update(stat_tracker);
             
             stat_tracker->current_run.frame_count++;
+            stat_tracker->counter++;
+
         }
         /*if (stat_tracker->oldgameval.buttons != stat_tracker->gameval.buttons) {
             cb_state_machine_update(stat_tracker);
@@ -235,6 +256,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 current_run->bool_counts.all[i]++;
             }
         }
+        
     }
     
     
@@ -320,6 +342,8 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         set_style(ctx, THEME_BOB);
     }
     nk_end(ctx);
+
+
 }
 
 
@@ -337,5 +361,7 @@ int WinMain(void) {
     stat_tracker.reader = reader;
     stat_tracker.runs = NULL;
     
+    //init_client(&stat_tracker);
+
     start_nk_loop(&stat_tracker);    
 }

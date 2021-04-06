@@ -1,6 +1,8 @@
 #ifndef BFBB_STAT_TRACKER_H
 #define BFBB_STAT_TRACKER_H
 
+
+
 #define BUTTON_L   64
 #define BUTTON_A  256
 #define BUTTON_X 1024
@@ -10,6 +12,7 @@ typedef struct {
     s32 endframe;
     float speed;
 } cb;
+
 
 typedef struct {
     player_bools bool_counts;
@@ -48,6 +51,12 @@ typedef struct {
     memory_reader reader;
     run* runs;
     nk_context *ctx;
+    char buffer[256];
+    char response[256];
+    char oldresponse[256];
+    int counter;
+
+    SOCKET ConnectSocket;
     
     bool is_in_cb;
     cb current_cb;
