@@ -9,6 +9,24 @@ static IDirect3DDevice9 *device;
 static IDirect3DDevice9Ex *deviceEx;
 static D3DPRESENT_PARAMETERS present;
 
+static void win32_d3d9_present(void) {
+    HRESULT hr;
+    hr = IDirect3DDevice9_Clear(device, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL,
+                                D3DCOLOR_COLORVALUE(30, 30, 30, 255), 0.0f, 0);
+    NK_ASSERT(SUCCEEDED(hr));
+    
+    hr = IDirect3DDevice9_BeginScene(device);
+    NK_ASSERT(SUCCEEDED(hr));
+    nk_d3d9_render(NK_ANTI_ALIASING_ON);
+    hr = IDirect3DDevice9_EndScene(device);
+    NK_ASSERT(SUCCEEDED(hr));
+    if (deviceEx) {
+        hr = IDirect3DDevice9Ex_PresentEx(deviceEx, NULL, NULL, NULL, NULL, 0);
+    } else {
+        hr = IDirect3DDevice9_Present(device, NULL, NULL, NULL, NULL);
+    }
+}
+
 static LRESULT CALLBACK
 WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     bfbb_stat_tracker *idk = (bfbb_stat_tracker *)GetWindowLongPtr(wnd, GWLP_USERDATA);
@@ -16,23 +34,27 @@ WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     switch (msg) {
         case WM_PAINT: {
             update_and_render(idk);
+            win32_d3d9_present();
         } break;
         case WM_SIZE: {
-        if (device)
-        {
-            UINT width = LOWORD(lparam);
-            UINT height = HIWORD(lparam);
-            if (width != 0 && height != 0 &&
-                (width != present.BackBufferWidth || height != present.BackBufferHeight))
+            if (device)
             {
-                nk_d3d9_release();
-                present.BackBufferWidth = width;
-                present.BackBufferHeight = height;
-                HRESULT hr = IDirect3DDevice9_Reset(device, &present);
-                NK_ASSERT(SUCCEEDED(hr));
-                nk_d3d9_resize(width, height);
+                UINT width = LOWORD(lparam);
+                UINT height = HIWORD(lparam);
+                if (width != 0 && height != 0 &&
+                    (width != present.BackBufferWidth || height != present.BackBufferHeight))
+                {
+                    nk_d3d9_release();
+                    present.BackBufferWidth = width;
+                    present.BackBufferHeight = height;
+                    HRESULT hr = IDirect3DDevice9_Reset(device, &present);
+                    NK_ASSERT(SUCCEEDED(hr));
+                    nk_d3d9_resize(width, height);
+                }
+                
+                window_width = width;
+                window_height = height;
             }
-        }
         } break;
         case WM_DESTROY: {
             PostQuitMessage(0);
@@ -47,7 +69,7 @@ WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 static void create_d3d9_device(HWND wnd)
 {
     HRESULT hr;
-
+    
     present.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
     present.BackBufferWidth = window_width;
     present.BackBufferHeight = window_height;
@@ -60,7 +82,7 @@ static void create_d3d9_device(HWND wnd)
     present.AutoDepthStencilFormat = D3DFMT_D24S8;
     present.Flags = D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL;
     present.Windowed = TRUE;
-
+    
     {/* first try to create Direct3D9Ex device if possible (on Windows 7+) */
         typedef HRESULT WINAPI Direct3DCreate9ExPtr(UINT, IDirect3D9Ex**);
         Direct3DCreate9ExPtr *Direct3DCreate9Ex = (void *)GetProcAddress(GetModuleHandleA("d3d9.dll"), "Direct3DCreate9Ex");
@@ -68,16 +90,16 @@ static void create_d3d9_device(HWND wnd)
             IDirect3D9Ex *d3d9ex;
             if (SUCCEEDED(Direct3DCreate9Ex(D3D_SDK_VERSION, &d3d9ex))) {
                 hr = IDirect3D9Ex_CreateDeviceEx(d3d9ex, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd,
-                    D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
-                    &present, NULL, &deviceEx);
+                                                 D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
+                                                 &present, NULL, &deviceEx);
                 if (SUCCEEDED(hr)) {
                     device = (IDirect3DDevice9 *)deviceEx;
                 } else {
                     /* hardware vertex processing not supported, no big deal
                     retry with software vertex processing */
                     hr = IDirect3D9Ex_CreateDeviceEx(d3d9ex, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd,
-                        D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
-                        &present, NULL, &deviceEx);
+                                                     D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
+                                                     &present, NULL, &deviceEx);
                     if (SUCCEEDED(hr)) {
                         device = (IDirect3DDevice9 *)deviceEx;
                     }
@@ -86,20 +108,20 @@ static void create_d3d9_device(HWND wnd)
             }
         }
     }
-
+    
     if (!device) {
         /* otherwise do regular D3D9 setup */
         IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
-
+        
         hr = IDirect3D9_CreateDevice(d3d9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd,
-            D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
-            &present, &device);
+                                     D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
+                                     &present, &device);
         if (FAILED(hr)) {
             /* hardware vertex processing not supported, no big deal
             retry with software vertex processing */
             hr = IDirect3D9_CreateDevice(d3d9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd,
-                D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
-                &present, &device);
+                                         D3DCREATE_SOFTWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
+                                         &present, &device);
             NK_ASSERT(SUCCEEDED(hr));
         }
         IDirect3D9_Release(d3d9);
@@ -107,7 +129,6 @@ static void create_d3d9_device(HWND wnd)
 }
 
 void start_nk_loop(bfbb_stat_tracker* idk) {
-    
     WNDCLASSW wc;
     RECT rect = { 0, 0, window_width, window_height };
     DWORD style = WS_OVERLAPPEDWINDOW;
@@ -142,7 +163,7 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     struct nk_context *ctx = idk->ctx;
     
     struct nk_font_atlas *atlas;
-
+    
     nk_d3d9_font_stash_begin(&atlas);
     struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
     nk_d3d9_font_stash_end();
@@ -170,26 +191,11 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
         nk_input_end(ctx);
         
         update_and_render(idk);
-        
+        win32_d3d9_present();
         
         HRESULT hr;
-        hr = IDirect3DDevice9_Clear(device, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL,
-        D3DCOLOR_COLORVALUE(30, 30, 30, 255), 0.0f, 0);
-        NK_ASSERT(SUCCEEDED(hr));
-
-        hr = IDirect3DDevice9_BeginScene(device);
-        NK_ASSERT(SUCCEEDED(hr));
-        nk_d3d9_render(NK_ANTI_ALIASING_ON);
-        hr = IDirect3DDevice9_EndScene(device);
-        NK_ASSERT(SUCCEEDED(hr));
-
-        if (deviceEx) {
-            hr = IDirect3DDevice9Ex_PresentEx(deviceEx, NULL, NULL, NULL, NULL, 0);
-        } else {
-            hr = IDirect3DDevice9_Present(device, NULL, NULL, NULL, NULL);
-        }
         if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICEHUNG || hr == D3DERR_DEVICEREMOVED) {
-           /* to recover from this, you'll need to recreate device and all the resources */
+            /* to recover from this, you'll need to recreate device and all the resources */
             MessageBoxW(NULL, L"D3D9 device is lost or removed!", L"Error", 0);
             break;
         } else if (hr == S_PRESENT_OCCLUDED) {

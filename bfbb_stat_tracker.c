@@ -106,7 +106,7 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     if (should_count) {
         of_counter++;
     }
-
+    
     switch(of_state_machine->state) {
         case of_Undamaged: {
             //TODO: check for damage animation.
@@ -137,7 +137,7 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
             
         }
     }
-
+    
     if ((gameval->buttons & BUTTON_A) != 0 && should_count)
     {
         of_framepress = of_counter;
@@ -240,6 +240,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         }
     }
     
+    nk_clear(ctx);
     
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), NK_WINDOW_NO_SCROLLBAR))
     {
@@ -324,8 +325,6 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
     }
     nk_end(ctx);
 }
-
-
 
 int WinMain(void) {
     bfbb_stat_tracker stat_tracker = {0};

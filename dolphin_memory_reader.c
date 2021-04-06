@@ -68,10 +68,14 @@ void init_memory_reader(memory_reader *reader) {
 }
 
 void read_game_memory(memory_reader *reader, u64 address, void *result, size_t size) {
+    // should we check if we're hooked every time??? for now, it seems like we don't have to.
+    // calling ReadProcessMemory simply fails and that's fine i guess
+    
     size_t bytes_read;
     BOOL rc = ReadProcessMemory(reader->dolphin, (LPCVOID)(reader->emulated_base_address + address), result, size, &bytes_read);
-    assert(rc);
-    assert(size == bytes_read);
+    
+    // We've probably lost dolphin now
+    reader->is_hooked = rc && (bytes_read == size);
 }
 
 #if 0 
@@ -139,7 +143,7 @@ void get_game_values(memory_reader *reader, game_values *values) {
     
     ReadGameValue(health);
     byte_swap_u32(&values->health);
-
+    
     ReadGameValue(player_pointer);
     byte_swap_u32(&values->player_pointer);
     
