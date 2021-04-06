@@ -103,11 +103,7 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     if (should_count) {
         of_counter++;
     }
-    if ((gameval->buttons & BUTTON_A) != 0 && should_count)
-    {
-        of_framepress = of_counter;
-    }
-    
+
     switch(of_state_machine->state) {
         case of_Undamaged: {
             //TODO: check for damage animation.
@@ -116,23 +112,19 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
                  gameval->anim_id == 4189683634 || 
                  gameval->anim_id == 4189683635 || 
                  gameval->anim_id == 4189683636)) {
-                of_state_machine->state = of_DamagedPreFrame;
+                of_state_machine->state = of_DamagedOnFrame;
                 of_frameon = 0;
                 of_framepress = 0;
                 of_counter = 0;
                 should_count = true;
             }
         } break;
-        case of_DamagedPreFrame: {
+        case of_DamagedOnFrame: {
             if (gameval->anim_id == 1822369153)
             {
                 of_frameon = of_counter;
-                of_state_machine->state = of_DamagedOnFrame;
-            }
-        } break;
-        case of_DamagedOnFrame: {
-            if (gameval->anim_id == 1164637556)
                 of_state_machine->state = of_DamagedPostFrame;
+            }
         } break;
         case of_DamagedPostFrame: {
             if (gameval->anim_id != 1164637556){
@@ -142,6 +134,12 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
             
         }
     }
+
+    if ((gameval->buttons & BUTTON_A) != 0 && should_count)
+    {
+        of_framepress = of_counter;
+    }
+    
     
 }
 
