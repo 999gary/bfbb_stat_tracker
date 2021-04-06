@@ -32,9 +32,11 @@ s32 window_height = 800;
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_VARARGS
 #define NK_INCLUDE_DEFAULT_ALLOCATOR
-#define NK_IMPLEMENTATION
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
 #define NK_INCLUDE_FONT_BAKING
-#define NK_GDIP_IMPLEMENTATION
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_D3D9_IMPLEMENTATION
 #include "nuklear.h"
 typedef struct nk_context nk_context;
 
@@ -85,7 +87,8 @@ bool should_count = false;
 #include "bfbb_stat_tracker.h"
 
 #if defined(_WIN32)
-#include "win32_gdi_renderer.c"
+//#include "win32_gdi_renderer.c"
+#include "win32_d3d9_renderer.c"
 #else
 #error UNKNOWN RENDER PLATFORM!!!!
 #endif
