@@ -27838,7 +27838,7 @@ nk_chart_push_line(struct nk_context *ctx, struct nk_window *win,
     color = g->slots[slot].color;
     cur.x = g->x + (float)(step * (float)g->slots[slot].index);
     cur.y = (g->y + g->h) - (ratio * (float)g->h);
-    nk_stroke_line(out, g->slots[slot].last.x, g->slots[slot].last.y, cur.x, cur.y, 1.0f, color);
+    nk_stroke_line(out, g->slots[slot].last.x, g->slots[slot].last.y, cur.x, cur.y, line_thickness, color);
 
     bounds.x = cur.x - 3;
     bounds.y = cur.y - 3;

@@ -145,9 +145,9 @@ set_style(struct nk_context *ctx, enum theme theme)
         table[NK_COLOR_EDIT] = nk_rgba(50, 58, 61, 225);
         table[NK_COLOR_EDIT_CURSOR] = nk_rgba(210, 210, 210, 255);
         table[NK_COLOR_COMBO] = nk_rgba(50, 58, 61, 255);
-        table[NK_COLOR_CHART] = nk_rgba(50, 58, 61, 255);
-        table[NK_COLOR_CHART_COLOR] = nk_rgba(48, 83, 111, 255);
-        table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(255, 0, 0, 255);
+        table[NK_COLOR_CHART] = nk_rgba(0x04, 0xa7, 0xFF, 255);
+        table[NK_COLOR_CHART_COLOR] = nk_rgba(0xFF, 0x58, 0x04, 255);
+        table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(0xff, 0x43, 0x0a, 255);
         table[NK_COLOR_SCROLLBAR] = nk_rgba(50, 58, 61, 255);
         table[NK_COLOR_SCROLLBAR_CURSOR] = nk_rgba(48, 83, 111, 255);
         table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] = nk_rgba(53, 88, 116, 255);

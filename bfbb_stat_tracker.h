@@ -18,12 +18,24 @@ typedef struct {
     cb *cruise_boosts;
 } run;
 
+typedef struct {
+    bool auto_start;
+    
+} settings;
+
 typedef enum {
     of_Undamaged,
     of_DamagedPreFrame,
     of_DamagedOnFrame,
     of_DamagedPostFrame
 } of_state;
+
+typedef enum {
+    menu_Main,
+    menu_Debug,
+    menu_LastRun,
+    menu_Settings,
+} menu_state;
 
 const char *get_of_state_string(of_state state) {
     assert(state >= 0 && state <= of_DamagedPostFrame);
@@ -48,6 +60,8 @@ typedef struct {
     memory_reader reader;
     run* runs;
     nk_context *ctx;
+    menu_state menu_state;
+    settings settings;
     
     bool is_in_cb;
     cb current_cb;
