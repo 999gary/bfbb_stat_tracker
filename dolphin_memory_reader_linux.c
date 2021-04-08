@@ -56,7 +56,7 @@ void init_memory_reader(memory_reader *reader) {
                             while (tok) {
                                 char *thing1 = "/dev/shm/dolphinmem";
                                 char *thing2 = "/dev/shm/dolphin-emu";
-                                if (!strncmp(tok, thing1, sizeof(thing1)) || !strcmp(tok, thing2, sizeof(thing2))) {
+                                if (!strncmp(tok, thing1, strlen(thing1)) || !strncmp(tok, thing2, strlen(thing2))) {
                                     is_line = true;
                                     break;
                                 }
@@ -64,17 +64,20 @@ void init_memory_reader(memory_reader *reader) {
                             }
                             if (is_line) {
                                 strncpy(tmp, line, 256);
-                                unsigned long first_address = strtoul(strtok(tmp, " -"), NULL, 16);
-                                unsigned long second_address = strtoul(strtok(NULL, " -"), NULL, 16);
+                                char *first_address_str = strtok(tmp, " -");
+                                char *second_address_str = strtok(NULL, " -");
+                                unsigned long first_address = strtoul(first_address_str, NULL, 16);
+                                unsigned long second_address = strtoul(second_address_str, NULL, 16);
                                 assert(first_address && second_address);
                                 unsigned long size = second_address - first_address;
                                 if (size == DOLPHIN_MEM_SIZE) {
+                                    printf("dolphin pid = %d\n", pid);
                                     reader->dolphin = pid;
                                     reader->emulated_base_address = first_address;
                                     reader->is_hooked = true;
                                     is_hooked = true;
-                                    break;
                                 }
+                                break;
                             }
                         }
 
@@ -94,8 +97,14 @@ void init_memory_reader(memory_reader *reader) {
 //              chunk of memory with ReadProcessMemory and sets all the values
 //              it could be worth looking in to for performance.
 void read_game_memory(memory_reader *reader, u64 address, void *result, size_t size) {
-    struct iovec dest = {result, size};
-    struct iovec src = {reader->emulated_base_address + address, size};
+    struct iovec dest;
+    dest.iov_base = result;
+    dest.iov_len = size;
+
+    struct iovec src;
+    src.iov_base = reader->emulated_base_address + address;
+    src.iov_len = size;
+
     ssize_t bytes_read = process_vm_readv(reader->dolphin, &dest, 1, &src, 1, 0);
     reader->is_hooked = bytes_read == size;
 }

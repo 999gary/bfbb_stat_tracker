@@ -189,7 +189,7 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     
     AdjustWindowRectEx(&rect, style, FALSE, exstyle);
     
-    wnd = CreateWindowExW(exstyle, wc.lpszClassName, L"BFBB Stat Tracker",
+    wnd = CreateWindowExW(exstyle, wc.lpszClassName, L"BFBB Speedrun Stat Tracker",
                           style | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
                           rect.right - rect.left, rect.bottom - rect.top,
                           NULL, NULL, wc.hInstance, NULL);

@@ -294,8 +294,9 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
         switch(stat_tracker->menu_state) {
             case(menu_Main): {
                 bool dolphin_is_hooked  = stat_tracker->reader.is_hooked;
-                nk_layout_row_static(ctx, 30, window_width, 1);
-                nk_label(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT);
+                
+
+
 
                 if (dolphin_is_hooked) {
                     if(!stat_tracker->settings.auto_start) {
@@ -335,7 +336,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                     nk_layout_row_static(ctx, 30, window_width/2, 2);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
 
-                    nk_layout_row_dynamic(ctx, 150, 1);
+                    
 
                     int index = -1;
                     int cbcount = sb_count(stat_tracker->current_run.cruise_boosts);
@@ -349,6 +350,39 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                             max = speed;
                         }
                     }
+
+
+                    if (index != -1)
+                        nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
+                    player_bools bool_counts = last_run.bool_counts;
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
+
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
+
+                    nk_layout_row_static(ctx, 30, window_width, 1);
+                    if (nk_button_label(ctx, "Graphs")) {
+                        stat_tracker->menu_state = menu_Debug;
+                    }
+                    
+                    nk_layout_row_dynamic(ctx, 150, 1);
                     if(nk_chart_begin(ctx, NK_CHART_LINES, sb_count(stat_tracker->current_run.cruise_boosts), min, max)) {
                         for(int i = 0; i<cbcount; i++) {
                             nk_flags res = nk_chart_push(ctx, stat_tracker->current_run.cruise_boosts[i].speed);
@@ -358,32 +392,11 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
 
                         nk_chart_end(ctx);
                     }
-
-                    if (index != -1)
-                        nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
-                    player_bools bool_counts = last_run.bool_counts;
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
+                    //TODO: Make this colored
+                    nk_layout_row_static(ctx, 30, window_width, 1);
+                    nk_label(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT);
                 }
+
             } break;
             case(menu_LastRun): {
                 run last_run = sb_last(stat_tracker->runs);
