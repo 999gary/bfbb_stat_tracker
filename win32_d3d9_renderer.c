@@ -1,5 +1,5 @@
 
-//#include "soonge_font.h"
+#include "soonge_font.h"
 //#include "opensans_font.h"
 #include "Leroy.h"
 #include <d3d9.h>
@@ -205,7 +205,8 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     struct nk_font_atlas *atlas;
     
     nk_d3d9_font_stash_begin(&atlas);
-    struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
+    //struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
+    struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)soonge, sizeof(soonge), 15, 0);
     nk_d3d9_font_stash_end();
     nk_style_set_font(ctx, &droid->handle);
     u64 perf_freq = win32_get_performance_frequency();

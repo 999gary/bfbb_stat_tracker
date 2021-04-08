@@ -28,7 +28,8 @@ typedef uint64_t u64;
 s32 window_width = 800;
 s32 window_height = 700;
 
-float line_thickness = 3.0f;
+float line_thickness = 4.0f;
+float graph_dot_thickness = 10;
 
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -276,7 +277,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 }
                 if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
                     nk_layout_row_static(ctx, 30, window_width, 1);
-                    if (nk_button_label(ctx, "Last Run")) {
+                    if (nk_button_label(ctx, "Run History")) {
                         stat_tracker->menu_state = menu_LastRun;
                     }
                 }
@@ -286,6 +287,66 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 }
                 if (nk_button_label(ctx, "Settings")) {
                     stat_tracker->menu_state = menu_Settings;
+                }
+
+                if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
+                    run last_run = sb_last(stat_tracker->runs);
+                    nk_layout_row_static(ctx, 30, window_width/2, 1);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
+                    nk_layout_row_static(ctx, 30, window_width/2, 1);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts) + stat_tracker->is_in_cb);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
+                    
+                    nk_layout_row_dynamic(ctx, 150, 1);
+                    
+                    int index = -1;
+                    int cbcount = sb_count(stat_tracker->current_run.cruise_boosts);
+                    float min = FLT_MAX;
+                    float max = 0;
+                    for(int i = 0; i<cbcount; i++) {
+                        float speed = stat_tracker->current_run.cruise_boosts[i].speed;
+                        if(speed < min) {
+                            min = speed;
+                        } else if (speed > max) {
+                            max = speed;
+                        }
+                    }
+                    if(nk_chart_begin(ctx, NK_CHART_LINES, sb_count(stat_tracker->current_run.cruise_boosts), min, max)) {
+                        for(int i = 0; i<cbcount; i++) {
+                            nk_flags res = nk_chart_push(ctx, stat_tracker->current_run.cruise_boosts[i].speed);
+                            if (res & NK_CHART_HOVERING)
+                                index = i;
+                        }
+                        
+                        nk_chart_end(ctx);
+                    }
+                    
+                    if (index != -1)
+                        nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
+                    player_bools bool_counts = last_run.bool_counts;
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
+                    
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
                 }
             } break;
             case(menu_LastRun): {

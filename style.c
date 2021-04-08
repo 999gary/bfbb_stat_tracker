@@ -1,4 +1,11 @@
 enum theme {THEME_BLACK, THEME_WHITE, THEME_RED, THEME_BLUE, THEME_DARK, THEME_BOB};
+/*
+struct nk_color RGB(u32 n) {
+    u8 r = n >> 16;
+    u8 g = n >> 8;
+    u8 b = n >> 0;
+    return nk_rgb(r, g, b);
+}*/
 
 static void
 set_style(struct nk_context *ctx, enum theme theme)
@@ -145,9 +152,9 @@ set_style(struct nk_context *ctx, enum theme theme)
         table[NK_COLOR_EDIT] = nk_rgba(50, 58, 61, 225);
         table[NK_COLOR_EDIT_CURSOR] = nk_rgba(210, 210, 210, 255);
         table[NK_COLOR_COMBO] = nk_rgba(50, 58, 61, 255);
-        table[NK_COLOR_CHART] = nk_rgba(0x04, 0xa7, 0xFF, 255);
-        table[NK_COLOR_CHART_COLOR] = nk_rgba(0xFF, 0x58, 0x04, 255);
-        table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(0xff, 0x43, 0x0a, 255);
+        table[NK_COLOR_CHART] = nk_rgba(0x1c, 0x0d, 0x6e, 255);
+        table[NK_COLOR_CHART_COLOR] = nk_rgba(0xff, 0xd9, 0x99, 255);
+        table[NK_COLOR_CHART_COLOR_HIGHLIGHT] = nk_rgba(0xff, 0xd9, 0x99, 255);
         table[NK_COLOR_SCROLLBAR] = nk_rgba(50, 58, 61, 255);
         table[NK_COLOR_SCROLLBAR_CURSOR] = nk_rgba(48, 83, 111, 255);
         table[NK_COLOR_SCROLLBAR_CURSOR_HOVER] = nk_rgba(53, 88, 116, 255);

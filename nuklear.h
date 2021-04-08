@@ -27853,7 +27853,8 @@ nk_chart_push_line(struct nk_context *ctx, struct nk_window *win,
             color = g->slots[slot].highlight;
         }
     }
-    nk_fill_rect(out, nk_rect(cur.x - 2, cur.y - 2, 4, 4), 0, color);
+    nk_fill_rect(out, nk_rect(cur.x - graph_dot_thickness/2, cur.y - graph_dot_thickness/2, graph_dot_thickness, graph_dot_thickness), 3, color);
+    nk_stroke_rect(out, nk_rect(cur.x - graph_dot_thickness/2, cur.y - graph_dot_thickness/2, graph_dot_thickness, graph_dot_thickness), 3, 1, nk_rgba(0x00, 0x00, 0x00, 255));
 
     /* save current data point position */
     g->slots[slot].last.x = cur.x;
