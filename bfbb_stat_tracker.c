@@ -321,7 +321,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 if (nk_button_label(ctx, "Settings")) {
                     stat_tracker->menu_state = menu_Settings;
                 }
-
+                
                 if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
                     run last_run = sb_last(stat_tracker->runs);
                     nk_layout_row_static(ctx, 30, window_width/2, 1);
@@ -446,6 +446,29 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
             } break;
             case(menu_Debug): {
+                if (stat_tracker->is_in_run) {
+                    float speeds[] = {
+                        1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 4.5, 2.3, 4.5, 7.9, 16.8
+                    };
+                    
+                    nk_layout_row_static(ctx, 30, window_width, 1);
+                    if (nk_button_label(ctx, "Add Test Cruise Boosts")) {
+                        cb tmp = {0};
+                        int count = 20;
+                        float sum = 0.0f;
+                        for (s32 i = 0; i < count; ++i) {
+                            tmp.startframe = tmp.endframe;
+                            tmp.endframe = tmp.startframe + rand()%1200 + 120;
+                            tmp.speed = speeds[i%ArrayCount(speeds)];
+                            sum = tmp.speed;
+                            sb_push(stat_tracker->current_run.cruise_boosts, tmp);
+                        }
+                        float avg = sum / (float)count;
+                        stat_tracker->current_run.cb_average_speed = avg;
+                    }
+                }
+                
+                
                 nk_layout_row_static(ctx, 30, window_width, 1);
                 if (nk_button_label(ctx, "Back")) {
                     stat_tracker->menu_state = menu_Main;
