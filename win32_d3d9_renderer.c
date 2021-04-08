@@ -5,9 +5,40 @@
 #include <d3d9.h>
 #include "nuklear_d3d9.h"
 
+static inline u64 win32_get_performance_counter() {
+    LARGE_INTEGER result;
+    QueryPerformanceCounter(&result);
+    return result.QuadPart;
+}
+
+static inline u64 win32_get_performance_frequency() {
+    LARGE_INTEGER result;
+    QueryPerformanceFrequency(&result);
+    return result.QuadPart;
+}
+
+static inline double win32_get_elapsed_ms(u64 start, u64 end, u64 perf_freq) {
+    return 1000.0*(end - start)/perf_freq;
+}
+
 static IDirect3DDevice9 *device;
 static IDirect3DDevice9Ex *deviceEx;
 static D3DPRESENT_PARAMETERS present;
+
+static float framerate;
+
+// TODO: this doesn't work :((((((((
+static void set_vsync(bool on) {
+#if 0
+    nk_d3d9_create_state();
+    
+    if (on) present.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
+    else    present.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
+    
+    IDirect3DStateBlock9_Apply(d3d9.state);
+    IDirect3DStateBlock9_Release(d3d9.state);
+#endif
+}
 
 static void win32_d3d9_present(void) {
     HRESULT hr;
@@ -25,6 +56,15 @@ static void win32_d3d9_present(void) {
     } else {
         hr = IDirect3DDevice9_Present(device, NULL, NULL, NULL, NULL);
     }
+    if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICEHUNG || hr == D3DERR_DEVICEREMOVED) {
+        /* to recover from this, you'll need to recreate device and all the resources */
+        MessageBoxW(NULL, L"D3D9 device is lost or removed!", L"Error", 0);
+        exit(EXIT_FAILURE);
+    } else if (hr == S_PRESENT_OCCLUDED) {
+        /* window is not visible, so vsync won't work. Let's sleep a bit to reduce CPU usage */
+        Sleep(10);
+    }
+    NK_ASSERT(SUCCEEDED(hr));
 }
 
 static LRESULT CALLBACK
@@ -154,7 +194,7 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
                           rect.right - rect.left, rect.bottom - rect.top,
                           NULL, NULL, wc.hInstance, NULL);
     
-    SetWindowLongPtr(wnd, GWLP_USERDATA, idk);
+    SetWindowLongPtr(wnd, GWLP_USERDATA, (LONG_PTR)idk);
     
     create_d3d9_device(wnd);
     /* GUI */
@@ -165,9 +205,12 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     struct nk_font_atlas *atlas;
     
     nk_d3d9_font_stash_begin(&atlas);
-    struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
+    struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
     nk_d3d9_font_stash_end();
     nk_style_set_font(ctx, &droid->handle);
+    u64 perf_freq = win32_get_performance_frequency();
+    u64 start_tick = win32_get_performance_counter();
+    double elapsed_ms = 0.0;
     while (running)
     {
         MSG msg;
@@ -191,20 +234,18 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
         nk_input_end(ctx);
         
         update_and_render(idk);
+        framerate = 1000.0f / elapsed_ms;
+        
         win32_d3d9_present();
         
-        HRESULT hr;
-        if (hr == D3DERR_DEVICELOST || hr == D3DERR_DEVICEHUNG || hr == D3DERR_DEVICEREMOVED) {
-            /* to recover from this, you'll need to recreate device and all the resources */
-            MessageBoxW(NULL, L"D3D9 device is lost or removed!", L"Error", 0);
-            break;
-        } else if (hr == S_PRESENT_OCCLUDED) {
-            /* window is not visible, so vsync won't work. Let's sleep a bit to reduce CPU usage */
-            Sleep(10);
-        }
-        NK_ASSERT(SUCCEEDED(hr));
-        Sleep(3);
+        u64 end_tick = win32_get_performance_counter();
+        elapsed_ms = win32_get_elapsed_ms(start_tick, end_tick, perf_freq);
+        start_tick = end_tick;
     }
-    nk_d3d9_shutdown();
-    UnregisterClassW(wc.lpszClassName, wc.hInstance);
+    
+    // TODO: fun fact if we know we're on windows, we know that windows is going to clean up for us so we actually don't have to
+    //nk_d3d9_shutdown();
+    //UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
+
+int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) { run_application(); }

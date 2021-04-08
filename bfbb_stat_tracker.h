@@ -18,9 +18,10 @@ typedef struct {
     cb *cruise_boosts;
 } run;
 
+// NOTE: if this gets too big maybe make it a little bitmask (too big meaning > 8 bytes)
 typedef struct {
-    bool auto_start;
-    
+    bool auto_start; // starting RUNS
+    bool vsync;      // vsunc 
 } settings;
 
 typedef enum {
@@ -71,5 +72,6 @@ typedef struct {
 } bfbb_stat_tracker;
 
 void update_and_render(bfbb_stat_tracker *);
+void run_application();
 
 #endif //BFBB_STAT_TRACKER_H

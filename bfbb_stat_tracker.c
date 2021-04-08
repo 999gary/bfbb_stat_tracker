@@ -71,6 +71,8 @@ typedef struct {
     float bubble_bowl_speed;
     u32 buttons;
     u32 anim_id;
+    bool game_start; // this will check for w/ and w/o autosave because we don't care which one
+    u8 fuse_count; // in da brain
 } game_values;
 
 int of_counter = 0;
@@ -173,6 +175,8 @@ void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ..
 
 
 void update_and_render(bfbb_stat_tracker *stat_tracker){
+    set_vsync(stat_tracker->settings.vsync); // where is a good place to put this ???
+    
     struct nk_context *ctx = stat_tracker->ctx;
     
     stat_tracker->reader.should_hook = true;
@@ -246,22 +250,27 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
     
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), NK_WINDOW_NO_SCROLLBAR))
     {
+        nk_layout_row_static(ctx, 30, window_width, 1);
+        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "%f", framerate);
+        
+        stat_tracker->reader.should_hook = true; // TODO: get rid of this TBH
         switch(stat_tracker->menu_state) {
             case(menu_Main): {
+                bool dolphin_is_hooked  = stat_tracker->reader.is_hooked;
                 nk_layout_row_static(ctx, 30, window_width, 1);
-                if (nk_button_label(ctx, (stat_tracker->reader.is_hooked)?"Unhook Dolphin":"Hook Dolphin")) {
-                    stat_tracker->reader.should_hook = true;
-                }
+                nk_label(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT);
                 
-                if(!stat_tracker->settings.auto_start) {
-                    nk_layout_row_static(ctx, 30, window_width, 1);
-                    if (stat_tracker->is_in_run) {
-                        if (nk_button_label(ctx, "End Run")) {
-                            end_run(stat_tracker);
-                        }
-                    } else {
-                        if (nk_button_label(ctx, "Start Run")) {
-                            start_run(stat_tracker);
+                if (dolphin_is_hooked) {
+                    if(!stat_tracker->settings.auto_start) {
+                        nk_layout_row_static(ctx, 30, window_width, 1);
+                        if (stat_tracker->is_in_run) {
+                            if (nk_button_label(ctx, "End Run")) {
+                                end_run(stat_tracker);
+                            }
+                        } else {
+                            if (nk_button_label(ctx, "Start Run")) {
+                                start_run(stat_tracker);
+                            }
                         }
                     }
                 }
@@ -294,7 +303,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
                 
                 nk_layout_row_dynamic(ctx, 150, 1);
-
+                
                 int index = -1;
                 int cbcount = sb_count(stat_tracker->current_run.cruise_boosts);
                 float min = FLT_MAX;
@@ -313,10 +322,10 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         if (res & NK_CHART_HOVERING)
                             index = i;
                     }
-
+                    
                     nk_chart_end(ctx);
                 }
-
+                
                 if (index != -1)
                     nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
                 player_bools bool_counts = last_run.bool_counts;
@@ -362,39 +371,48 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 if (nk_button_label(ctx, "Back")) {
                     stat_tracker->menu_state = menu_Main;
                 }
+                
+                nk_bool tmp = stat_tracker->settings.auto_start;
                 nk_layout_row_static(ctx, 30, window_width, 1);
-                nk_checkbox_label(ctx, "Auto Start Run", &stat_tracker->settings.auto_start);
-
+                nk_checkbox_label(ctx, "Auto Start Run", &tmp);
+                stat_tracker->settings.auto_start = tmp;
+                
+                tmp = stat_tracker->settings.vsync;
+                nk_layout_row_static(ctx, 30, window_width, 1);
+                nk_checkbox_label(ctx, "Vsync", &tmp);
+                stat_tracker->settings.vsync = tmp;
             } break;
         }
         
-/*
-        nk_layout_row_static(ctx, 30, window_width/2, 2);
-        
-        if(stat_tracker->is_in_run) {
-            run currentrun = stat_tracker->current_run;
-            nk_layout_row_static(ctx, 30, window_width/3, 1);
-            nk_label(ctx, "Current Run:", NK_TEXT_ALIGN_LEFT);
-            
-        } else if (sb_count(stat_tracker->runs)) {
-            run last_run = sb_last(stat_tracker->runs);
-            nk_layout_row_static(ctx, 30, window_width/3, 1);
-            nk_label(ctx, "Last Run:", NK_TEXT_ALIGN_LEFT);
-            nk_layout_row_static(ctx, 30, window_width/2, 2);
-            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
-            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts));
-            nk_layout_row_static(ctx, 30, window_width/2, 2);
-            nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
-        }
-        nk_layout_row_static(ctx, 30, window_width/2, 1);
-        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Animation ID: %u", stat_tracker->gameval.anim_id);
-        */
+        /*
+                nk_layout_row_static(ctx, 30, window_width/2, 2);
+                
+                if(stat_tracker->is_in_run) {
+                    run currentrun = stat_tracker->current_run;
+                    nk_layout_row_static(ctx, 30, window_width/3, 1);
+                    nk_label(ctx, "Current Run:", NK_TEXT_ALIGN_LEFT);
+                    
+                } else if (sb_count(stat_tracker->runs)) {
+                    run last_run = sb_last(stat_tracker->runs);
+                    nk_layout_row_static(ctx, 30, window_width/3, 1);
+                    nk_label(ctx, "Last Run:", NK_TEXT_ALIGN_LEFT);
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts));
+                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
+                }
+                nk_layout_row_static(ctx, 30, window_width/2, 1);
+                nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Animation ID: %u", stat_tracker->gameval.anim_id);
+                */
         set_style(ctx, THEME_BOB);
     }
     nk_end(ctx);
 }
 
-int WinMain(void) {
+
+
+void run_application(void) {
     bfbb_stat_tracker stat_tracker = {0};
     of_state_machine of_state_machine = {0};
     game_values gameval = {0};
@@ -408,5 +426,8 @@ int WinMain(void) {
     stat_tracker.runs = NULL;
     stat_tracker.menu_state = menu_Main;
     
-    start_nk_loop(&stat_tracker);    
+    // vsync should be ON by default
+    stat_tracker.settings.vsync = 1;
+    
+    start_nk_loop(&stat_tracker);
 }
