@@ -30,6 +30,7 @@ s32 window_height = 700;
 
 float line_thickness = 3.0f;
 
+#if defined(_WIN32)
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
 #define NK_INCLUDE_STANDARD_VARARGS
@@ -40,8 +41,20 @@ float line_thickness = 3.0f;
 #define NK_IMPLEMENTATION
 #define NK_D3D9_IMPLEMENTATION
 #include "nuklear.h"
+#else
+#define NK_INCLUDE_FIXED_TYPES
+#define NK_INCLUDE_STANDARD_IO
+#define NK_INCLUDE_STANDARD_VARARGS
+#define NK_INCLUDE_DEFAULT_ALLOCATOR
+#define NK_INCLUDE_VERTEX_BUFFER_OUTPUT
+#define NK_INCLUDE_FONT_BAKING
+#define NK_INCLUDE_DEFAULT_FONT
+#define NK_IMPLEMENTATION
+#define NK_SDL_GL2_IMPLEMENTATION
+#include "nuklear.h"
+#endif
 typedef struct nk_context nk_context;
-
+#if defined(_WIN32)
 typedef union {
     struct bools_dummy_{
         s32 is_jumping;
@@ -55,6 +68,22 @@ typedef union {
     };
     s32 all[sizeof(struct bools_dummy_)/sizeof(s32)];
 } player_bools;
+#else
+typedef union {
+    struct {
+        s32 is_jumping;
+        s32 is_d_jumping;
+        s32 is_bubble_spinning;
+        s32 is_bubble_bouncing;
+        s32 is_bubble_bashing;
+        s32 is_bubble_bowling;
+        s32 was_d_jumping;
+        s32 is_coptering;
+    };
+    s32 all[8];
+} player_bools;
+#endif
+
 
 typedef struct {
     player_bools bools;
@@ -81,7 +110,11 @@ int of_framepress = 0;
 bool should_count = false;
 
 #if  defined(DOLPHIN)
-#include "dolphin_memory_reader.c"
+#if  defined(_WIN32)
+#include "dolphin_memory_reader_win32.c"
+#elif defined(__linux__)
+#include "dolphin_memory_reader_linux.c"
+#endif
 #elif defined(XBOX)
 #include "xbox_memory_reader.c"
 #else 
@@ -93,6 +126,9 @@ bool should_count = false;
 #if defined(_WIN32)
 //#include "win32_gdi_renderer.c"
 #include "win32_d3d9_renderer.c"
+#elif defined(__linux__)
+#include <float.h>
+#include "linux_sdl_renderer.c"
 #else
 #error UNKNOWN RENDER PLATFORM!!!!
 #endif
@@ -250,9 +286,6 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
     
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), NK_WINDOW_NO_SCROLLBAR))
     {
-        nk_layout_row_static(ctx, 30, window_width, 1);
-        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "%f", framerate);
-        
         stat_tracker->reader.should_hook = true; // TODO: get rid of this TBH
         switch(stat_tracker->menu_state) {
             case(menu_Main): {
