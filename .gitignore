@@ -1,4 +1,6 @@
 *.exe
 *.obj
 *.pdb
+*.ttf
+*.elf
 .vs/*

@@ -392,11 +392,11 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
 
                         nk_chart_end(ctx);
                     }
-                    //TODO: Make this colored
-                    nk_layout_row_static(ctx, 30, window_width, 1);
-                    nk_label(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT);
-                }
 
+                }
+                //TODO: Make this colored
+                nk_layout_row_static(ctx, 30, window_width, 1);
+                nk_label_colored(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT, dolphin_is_hooked ? nk_rgb(0, 255, 0) : nk_rgb(255, 0, 0));
             } break;
             case(menu_LastRun): {
                 run last_run = sb_last(stat_tracker->runs);
