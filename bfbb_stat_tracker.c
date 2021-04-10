@@ -148,10 +148,63 @@ void load_runs(bfbb_stat_tracker* tracker) {
         return;
     fseek(file, 0, SEEK_END);
     size_t size = ftell(file);
-    char *string = malloc(size);
+    char *string = malloc(size + 1);
     fseek(file, 0, SEEK_SET);
     fread(string, 1, size, file);
+    string[size] = '\0';
     fclose(file);
+
+    cJSON* main_json = cJSON_Parse(string);
+    if (main_json == NULL) {
+        const char *error_ptr = cJSON_GetErrorPtr();
+        if (error_ptr != NULL)
+        {
+            fprintf(stderr, "Error before: %s\n", error_ptr);
+        }
+        return;
+    }
+
+    cJSON* run_count = cJSON_GetObjectItemCaseSensitive(main_json, "run_count");
+    if(!cJSON_IsNumber(run_count) || run_count->valuedouble == 0) 
+        return;
+
+    cJSON* run_array = cJSON_GetObjectItemCaseSensitive(main_json, "run_array");
+    if(!cJSON_IsArray(run_array))
+        return;
+
+
+    int runs_count = run_count->valueint;
+    cJSON* run_element;
+
+    cJSON_ArrayForEach(run_element, run_array) {
+        run run_temp = {0};
+        cJSON* player_bools = cJSON_GetObjectItemCaseSensitive(run_element, "player_bools");
+        run_temp.bool_counts.is_jumping = cJSON_GetObjectItemCaseSensitive(player_bools, "is_jumping")->valueint;
+        run_temp.bool_counts.is_d_jumping = cJSON_GetObjectItemCaseSensitive(player_bools, "is_d_jumping")->valueint;
+        run_temp.bool_counts.is_bubble_spinning = cJSON_GetObjectItemCaseSensitive(player_bools, "is_bubble_spinning")->valueint;
+        run_temp.bool_counts.is_bubble_bouncing = cJSON_GetObjectItemCaseSensitive(player_bools, "is_bubble_bouncing")->valueint;
+        run_temp.bool_counts.is_bubble_bashing = cJSON_GetObjectItemCaseSensitive(player_bools, "is_bubble_bashing")->valueint;
+        run_temp.bool_counts.is_bubble_bowling = cJSON_GetObjectItemCaseSensitive(player_bools, "is_bubble_bowling")->valueint;
+        run_temp.bool_counts.was_d_jumping = cJSON_GetObjectItemCaseSensitive(player_bools, "was_d_jumping")->valueint;
+        run_temp.bool_counts.is_coptering = cJSON_GetObjectItemCaseSensitive(player_bools, "is_coptering")->valueint;
+        run_temp.cb_average_speed = cJSON_GetObjectItemCaseSensitive(run_element, "cb_average_speed")->valuedouble;
+        run_temp.frame_count = cJSON_GetObjectItemCaseSensitive(run_element, "frame_count")->valueint;
+        
+        run_temp.cruise_boosts;
+        cJSON* cbs_array = cJSON_GetObjectItemCaseSensitive(run_element, "cbs_array");
+        cJSON* cb_element;
+        cJSON_ArrayForEach(cb_element, cbs_array) {
+            cb cruise_boost = {0};
+            cruise_boost.speed = cJSON_GetObjectItemCaseSensitive(cb_element, "cb_speed")->valuedouble;
+            cruise_boost.startframe = cJSON_GetObjectItemCaseSensitive(cb_element, "cb_start_frame")->valueint;
+            cruise_boost.endframe = cJSON_GetObjectItemCaseSensitive(cb_element, "cb_end_frame")->valueint;
+            sb_push(run_temp.cruise_boosts, cruise_boost);
+        }
+        sb_push(tracker->runs, run_temp);
+    }
+
+    cJSON_Delete(main_json);
+    free(string);
 }
 
 cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
@@ -631,7 +684,7 @@ void run_application(void) {
     stat_tracker.settings.vsync = 1;
     
     
-    load_runs(stat_tracker);
+    load_runs(&stat_tracker);
     
     start_nk_loop(&stat_tracker);
 }
