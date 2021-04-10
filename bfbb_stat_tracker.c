@@ -114,17 +114,17 @@ bool should_count = false;
 
 // NOTE(jelly): this is a bit of a mess
 #if  defined(DOLPHIN)
-    #include "dolphin_memory_reader.h"
-    #if  defined(_WIN32)
-        #include "dolphin_memory_reader_win32.c"
-    #elif defined(__linux__)
-        #include "dolphin_memory_reader_linux.c"
-    #endif
-    #include "dolphin_memory_reader.c"
+#include "dolphin_memory_reader.h"
+#if  defined(_WIN32)
+#include "dolphin_memory_reader_win32.c"
+#elif defined(__linux__)
+#include "dolphin_memory_reader_linux.c"
+#endif
+#include "dolphin_memory_reader.c"
 #elif defined(XBOX)
-    #include "xbox_memory_reader.c"
+#include "xbox_memory_reader.c"
 #else
-    #error PLEASE DEFINE A PLATFORM!!!!
+#error PLEASE DEFINE A PLATFORM!!!!
 #endif
 
 #include "bfbb_stat_tracker.h"
@@ -146,15 +146,20 @@ void load_runs(bfbb_stat_tracker* tracker) {
     FILE* file = fopen("runs.json", "r");
     if (file == NULL) 
         return;
-    char* read_file = 
+    fseek(file, 0, SEEK_END);
+    size_t size = ftell(file);
+    char *string = malloc(size);
+    fseek(file, 0, SEEK_SET);
+    fread(string, 1, size, file);
+    fclose(file);
 }
 
 cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
     cJSON* main = cJSON_CreateObject();
     cJSON* player_bools = cJSON_CreateObject();
-
+    
     //TODO (Will): Error check these?
-
+    
     if(cJSON_AddNumberToObject(player_bools, "is_jumping", (double)stat_tracker->runs[run].bool_counts.is_jumping) == NULL) {}
     if(cJSON_AddNumberToObject(player_bools, "is_d_jumping", (double)stat_tracker->runs[run].bool_counts.is_d_jumping) == NULL) {}
     if(cJSON_AddNumberToObject(player_bools, "is_bubble_spinning", (double)stat_tracker->runs[run].bool_counts.is_bubble_spinning) == NULL) {}
@@ -166,10 +171,10 @@ cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
     if(cJSON_AddItemToObject(main, "player_bools", player_bools) == true) {}
     if(cJSON_AddNumberToObject(main, "frame_count", (double)stat_tracker->runs[run].frame_count)) {}
     if(cJSON_AddNumberToObject(main, "cb_average_speed", (double)stat_tracker->runs[run].cb_average_speed)) {}
-
+    
     //TODO (Will): Check if we are in a cb maybe???????
     int cb_count = sb_count(stat_tracker->runs[run].cruise_boosts);
-
+    
     if(cJSON_AddNumberToObject(main, "cb_count", cb_count)) {}
     cJSON* cbs_array = cJSON_CreateArray();
     if(cJSON_AddItemToObject(main, "cbs_array", cbs_array)) {}
@@ -199,25 +204,25 @@ bool create_runs_json_file(bfbb_stat_tracker* stat_tracker) {
         cJSON* run = create_run_json(stat_tracker, i);
         if(cJSON_AddItemToArray(run_array, run)) {};
     }
-
+    
     char* string = cJSON_Print(main);
-
+    
     fwrite(string, 1, strlen(string), file);
-
+    
     fclose(file);
 }
 
 void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     of_state_machine *of_state_machine = stat_tracker->of_state_machine;
     game_values *gameval = &stat_tracker->gameval;
-
+    
     if (gameval->character != 0)
         return;
-
+    
     if (should_count) {
         of_counter++;
     }
-
+    
     switch(of_state_machine->state) {
         case of_Undamaged: {
             //TODO: check for damage animation.
@@ -245,16 +250,16 @@ void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
                 of_state_machine->state = of_Undamaged;
                 should_count = false;
             }
-
+            
         }
     }
-
+    
     if ((gameval->buttons & BUTTON_A) != 0 && should_count)
     {
         of_framepress = of_counter;
     }
-
-
+    
+    
 }
 
 void start_run(bfbb_stat_tracker *tracker) {
@@ -271,12 +276,12 @@ void end_run(bfbb_stat_tracker *tracker) {
 
 void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ...) {
     static char buffer[2048];
-
+    
     va_list args;
     va_start(args, fmt);
     int result = vsnprintf(buffer, 2048, fmt, args);
     va_end(args);
-
+    
     nk_label(ctx, buffer, align);
 }
 
@@ -284,26 +289,26 @@ void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ..
 
 void update_and_render(bfbb_stat_tracker *stat_tracker){
     set_vsync(stat_tracker->settings.vsync); // where is a good place to put this ???
-
+    
     struct nk_context *ctx = stat_tracker->ctx;
-
+    
     stat_tracker->reader.should_hook = true;
     if(!stat_tracker->reader.is_hooked && stat_tracker->reader.should_hook)
     {
         init_memory_reader(&stat_tracker->reader);
         stat_tracker->reader.should_hook = false;
     }
-
+    
     if(stat_tracker->reader.is_hooked)
     {
         stat_tracker->oldgameval = stat_tracker->gameval;
         get_game_values(&stat_tracker->reader, &stat_tracker->gameval);
-
+        
         run *current_run = &stat_tracker->current_run;
         cb *current_cb = &stat_tracker->current_cb;
-
+        
         game_values *gameval = &stat_tracker->gameval;
-
+        
         if (stat_tracker->oldgameval.frame_oscillator != stat_tracker->gameval.frame_oscillator)
         {
             if ((gameval->anim_id == 1291389524 || gameval->anim_id == 1679544279) &&
@@ -332,20 +337,20 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 }
                 stat_tracker->is_in_cb = false;
             }
-
-
+            
+            
             of_state_machine_update(stat_tracker);
-
+            
             stat_tracker->current_run.frame_count++;
         }
         /*if (stat_tracker->oldgameval.buttons != stat_tracker->gameval.buttons) {
             cb_state_machine_update(stat_tracker);
         }*/
-
+        
         if (stat_tracker->oldgameval.anim_id != stat_tracker->gameval.anim_id) {
-
+            
         }
-
+        
         game_values *old = &stat_tracker->oldgameval;
         for (s32 i = 0; i < ArrayCount(gameval->bools.all); ++i) {
             if (old->bools.all[i] == 0 && gameval->bools.all[i] != 0) {
@@ -353,9 +358,9 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             }
         }
     }
-
+    
     nk_clear(ctx);
-
+    
     if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), NK_WINDOW_NO_SCROLLBAR))
     {
         stat_tracker->reader.should_hook = true; // TODO: get rid of this TBH
@@ -363,9 +368,9 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
             case(menu_Main): {
                 bool dolphin_is_hooked  = stat_tracker->reader.is_hooked;
                 
-
-
-
+                
+                
+                
                 if (dolphin_is_hooked) {
                     if(!stat_tracker->settings.auto_start) {
                         nk_layout_row_static(ctx, 30, window_width, 1);
@@ -393,19 +398,19 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 if (nk_button_label(ctx, "Settings")) {
                     stat_tracker->menu_state = menu_Settings;
                 }
-
+                
                 if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
                     run last_run = sb_last(stat_tracker->runs);
                     nk_layout_row_static(ctx, 30, window_width/2, 1);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
                     nk_layout_row_static(ctx, 30, window_width/2, 1);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts) + stat_tracker->is_in_cb);
-
+                    
                     nk_layout_row_static(ctx, 30, window_width/2, 2);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
-
                     
-
+                    
+                    
                     int index = -1;
                     int cbcount = sb_count(stat_tracker->current_run.cruise_boosts);
                     float min = FLT_MAX;
@@ -418,12 +423,12 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                             max = speed;
                         }
                     }
-
-
+                    
+                    
                     if (index != -1)
                         nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
                     player_bools bool_counts = last_run.bool_counts;
-
+                    
                     nk_layout_row_dynamic(ctx, 30*6, 1);
                     if(nk_group_begin(ctx, "Useless Stats", NK_PANEL_MENU)) {
                         nk_layout_row_static(ctx, 30, window_width/2, 2);
@@ -439,7 +444,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
                         nk_group_end(ctx);
                     }
-
+                    
                     nk_layout_row_static(ctx, 30, window_width, 1);
                     if (nk_button_label(ctx, "Graphs")) {
                         stat_tracker->menu_state = menu_Debug;
@@ -452,10 +457,10 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                             if (res & NK_CHART_HOVERING)
                                 index = i;
                         }
-
+                        
                         nk_chart_end(ctx);
                     }
-
+                    
                 }
                 //TODO: Make this colored
                 nk_layout_row_static(ctx, 30, window_width, 1);
@@ -471,12 +476,12 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
                 nk_layout_row_static(ctx, 30, window_width/2, 1);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts) + stat_tracker->is_in_cb);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
-
+                
                 nk_layout_row_dynamic(ctx, 150, 1);
-
+                
                 int index = -1;
                 int cbcount = sb_count(stat_tracker->current_run.cruise_boosts);
                 float min = FLT_MAX;
@@ -495,32 +500,32 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         if (res & NK_CHART_HOVERING)
                             index = i;
                     }
-
+                    
                     nk_chart_end(ctx);
                 }
-
+                
                 if (index != -1)
                     nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
                 player_bools bool_counts = last_run.bool_counts;
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
-
+                
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
             } break;
@@ -529,7 +534,7 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                     float speeds[] = {
                         1, 2, 3, 4, 5, 6, 7, 8, 7, 6, 5, 4, 4.5, 2.3, 4.5, 7.9, 16.8
                     };
-
+                    
                     nk_layout_row_static(ctx, 30, window_width, 1);
                     if (nk_button_label(ctx, "Add Test Cruise Boosts")) {
                         cb tmp = {0};
@@ -546,8 +551,8 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         stat_tracker->current_run.cb_average_speed = avg;
                     }
                 }
-
-
+                
+                
                 nk_layout_row_static(ctx, 30, window_width, 1);
                 if (nk_button_label(ctx, "Back")) {
                     stat_tracker->menu_state = menu_Main;
@@ -567,19 +572,19 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 if (nk_button_label(ctx, "Back")) {
                     stat_tracker->menu_state = menu_Main;
                 }
-
+                
                 nk_bool tmp = stat_tracker->settings.auto_start;
                 nk_layout_row_static(ctx, 30, window_width, 1);
                 nk_checkbox_label(ctx, "Auto Start Run", &tmp);
                 stat_tracker->settings.auto_start = tmp;
-
+                
                 tmp = stat_tracker->settings.vsync;
                 nk_layout_row_static(ctx, 30, window_width, 1);
                 nk_checkbox_label(ctx, "Vsync", &tmp);
                 stat_tracker->settings.vsync = tmp;
             } break;
         }
-
+        
         /*
                 nk_layout_row_static(ctx, 30, window_width/2, 2);
 
@@ -621,12 +626,12 @@ void run_application(void) {
     stat_tracker.reader = reader;
     stat_tracker.runs = NULL;
     stat_tracker.menu_state = menu_Main;
-
+    
     // vsync should be ON by default
     stat_tracker.settings.vsync = 1;
-
+    
     
     load_runs(stat_tracker);
-
+    
     start_nk_loop(&stat_tracker);
 }
