@@ -249,4 +249,5 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     //UnregisterClassW(wc.lpszClassName, wc.hInstance);
 }
 
-int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) { run_application(); }
+//int WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nShowCmd) { run_application(); }
+int main() {run_application();}

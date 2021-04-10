@@ -3,4 +3,6 @@
 *.pdb
 *.ttf
 *.elf
+*.json
 .vs/*
+.vscode/*

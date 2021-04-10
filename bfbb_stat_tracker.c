@@ -13,6 +13,7 @@
 
 #include "stretchy_buffer.h"
 
+
 typedef int8_t  s8;
 typedef int16_t s16;
 typedef int32_t s32;
@@ -55,6 +56,7 @@ float graph_dot_thickness = 10;
 #include "nuklear.h"
 #endif
 typedef struct nk_context nk_context;
+#include "cJSON.c"
 #if defined(_WIN32)
 typedef union {
     struct bools_dummy_{
@@ -140,6 +142,71 @@ bool should_count = false;
 #include "style.c"
 #include "level_names.h"
 
+void load_runs(bfbb_stat_tracker* tracker) {
+    FILE* file = fopen("runs.json", "r");
+    if (file == NULL) 
+        return;
+    char* read_file = 
+}
+
+cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
+    cJSON* main = cJSON_CreateObject();
+    cJSON* player_bools = cJSON_CreateObject();
+
+    //TODO (Will): Error check these?
+
+    if(cJSON_AddNumberToObject(player_bools, "is_jumping", (double)stat_tracker->runs[run].bool_counts.is_jumping) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_d_jumping", (double)stat_tracker->runs[run].bool_counts.is_d_jumping) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_bubble_spinning", (double)stat_tracker->runs[run].bool_counts.is_bubble_spinning) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_bubble_bouncing", (double)stat_tracker->runs[run].bool_counts.is_bubble_bouncing) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_bubble_bashing", (double)stat_tracker->runs[run].bool_counts.is_bubble_bashing) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_bubble_bowling", (double)stat_tracker->runs[run].bool_counts.is_bubble_bowling) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "was_d_jumping", (double)stat_tracker->runs[run].bool_counts.was_d_jumping) == NULL) {}
+    if(cJSON_AddNumberToObject(player_bools, "is_coptering", (double)stat_tracker->runs[run].bool_counts.is_coptering) == NULL) {}
+    if(cJSON_AddItemToObject(main, "player_bools", player_bools) == true) {}
+    if(cJSON_AddNumberToObject(main, "frame_count", (double)stat_tracker->runs[run].frame_count)) {}
+    if(cJSON_AddNumberToObject(main, "cb_average_speed", (double)stat_tracker->runs[run].cb_average_speed)) {}
+
+    //TODO (Will): Check if we are in a cb maybe???????
+    int cb_count = sb_count(stat_tracker->runs[run].cruise_boosts);
+
+    if(cJSON_AddNumberToObject(main, "cb_count", cb_count)) {}
+    cJSON* cbs_array = cJSON_CreateArray();
+    if(cJSON_AddItemToObject(main, "cbs_array", cbs_array)) {}
+    for(int i = 0; i < cb_count; i++) {
+        cJSON* cb_object = cJSON_CreateObject(); 
+        if(cJSON_AddItemToArray(cbs_array, cb_object)) {}
+        cJSON* cb_start_frame = cJSON_CreateNumber((double)stat_tracker->runs[run].cruise_boosts[i].startframe);
+        if(cJSON_AddItemToObject(cb_object, "cb_start_frame", cb_start_frame)) {}
+        cJSON* cb_end_frame = cJSON_CreateNumber((double)stat_tracker->runs[run].cruise_boosts[i].endframe);
+        if(cJSON_AddItemToObject(cb_object, "cb_end_frame", cb_end_frame)) {}
+        cJSON* cb_speed = cJSON_CreateNumber((double)stat_tracker->runs[run].cruise_boosts[i].speed);
+        if(cJSON_AddItemToObject(cb_object, "cb_speed", cb_speed)) {}
+    }
+    return main;
+}
+
+
+bool create_runs_json_file(bfbb_stat_tracker* stat_tracker) {
+    FILE* file = fopen("runs.json", "w");
+    cJSON* main = cJSON_CreateObject(); 
+    int runs_count = sb_count(stat_tracker->runs);
+    cJSON* run_count = cJSON_CreateNumber((double)runs_count);
+    if(cJSON_AddItemToObject(main, "run_count", run_count)) {}
+    cJSON* run_array = cJSON_CreateArray();
+    if(cJSON_AddItemToObject(main, "run_array", run_array)) {}
+    for(int i = 0; i < runs_count; i++) {
+        cJSON* run = create_run_json(stat_tracker, i);
+        if(cJSON_AddItemToArray(run_array, run)) {};
+    }
+
+    char* string = cJSON_Print(main);
+
+    fwrite(string, 1, strlen(string), file);
+
+    fclose(file);
+}
+
 void of_state_machine_update(bfbb_stat_tracker* stat_tracker) {
     of_state_machine *of_state_machine = stat_tracker->of_state_machine;
     game_values *gameval = &stat_tracker->gameval;
@@ -198,6 +265,7 @@ void start_run(bfbb_stat_tracker *tracker) {
 void end_run(bfbb_stat_tracker *tracker) {
     sb_push(tracker->runs, tracker->current_run);
     tracker->is_in_run = false;
+    create_runs_json_file(tracker);
 }
 
 
@@ -356,26 +424,21 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                         nk_tooltipf(ctx, "Speed: %g", stat_tracker->current_run.cruise_boosts[index].speed);
                     player_bools bool_counts = last_run.bool_counts;
 
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
-                    
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
-
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
-                    nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
+                    nk_layout_row_dynamic(ctx, 30*6, 1);
+                    if(nk_group_begin(ctx, "Useless Stats", NK_PANEL_MENU)) {
+                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
+                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
+                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
+                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
+                        nk_group_end(ctx);
+                    }
 
                     nk_layout_row_static(ctx, 30, window_width, 1);
                     if (nk_button_label(ctx, "Graphs")) {
@@ -561,6 +624,9 @@ void run_application(void) {
 
     // vsync should be ON by default
     stat_tracker.settings.vsync = 1;
+
+    
+    load_runs(stat_tracker);
 
     start_nk_loop(&stat_tracker);
 }
