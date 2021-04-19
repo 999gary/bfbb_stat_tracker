@@ -31,10 +31,10 @@ static float framerate;
 static void set_vsync(bool on) {
 #if 0
     nk_d3d9_create_state();
-    
+
     if (on) present.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
     else    present.PresentationInterval = D3DPRESENT_INTERVAL_IMMEDIATE;
-    
+
     IDirect3DStateBlock9_Apply(d3d9.state);
     IDirect3DStateBlock9_Release(d3d9.state);
 #endif
@@ -43,9 +43,9 @@ static void set_vsync(bool on) {
 static void win32_d3d9_present(void) {
     HRESULT hr;
     hr = IDirect3DDevice9_Clear(device, 0, NULL, D3DCLEAR_TARGET | D3DCLEAR_ZBUFFER | D3DCLEAR_STENCIL,
-                                D3DCOLOR_COLORVALUE(30, 30, 30, 255), 0.0f, 0);
+                                D3DCOLOR_COLORVALUE(255, 0, 255, 255), 0.0f, 0);
     NK_ASSERT(SUCCEEDED(hr));
-    
+
     hr = IDirect3DDevice9_BeginScene(device);
     NK_ASSERT(SUCCEEDED(hr));
     nk_d3d9_render(NK_ANTI_ALIASING_ON);
@@ -70,7 +70,7 @@ static void win32_d3d9_present(void) {
 static LRESULT CALLBACK
 WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
     bfbb_stat_tracker *idk = (bfbb_stat_tracker *)GetWindowLongPtr(wnd, GWLP_USERDATA);
-    
+
     switch (msg) {
         case WM_PAINT: {
             update_and_render(idk);
@@ -91,7 +91,7 @@ WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
                     NK_ASSERT(SUCCEEDED(hr));
                     nk_d3d9_resize(width, height);
                 }
-                
+
                 window_width = width;
                 window_height = height;
             }
@@ -109,7 +109,7 @@ WindowProc(HWND wnd, UINT msg, WPARAM wparam, LPARAM lparam) {
 static void create_d3d9_device(HWND wnd)
 {
     HRESULT hr;
-    
+
     present.PresentationInterval = D3DPRESENT_INTERVAL_DEFAULT;
     present.BackBufferWidth = window_width;
     present.BackBufferHeight = window_height;
@@ -122,7 +122,7 @@ static void create_d3d9_device(HWND wnd)
     present.AutoDepthStencilFormat = D3DFMT_D24S8;
     present.Flags = D3DPRESENTFLAG_DISCARD_DEPTHSTENCIL;
     present.Windowed = TRUE;
-    
+
     {/* first try to create Direct3D9Ex device if possible (on Windows 7+) */
         typedef HRESULT WINAPI Direct3DCreate9ExPtr(UINT, IDirect3D9Ex**);
         Direct3DCreate9ExPtr *Direct3DCreate9Ex = (void *)GetProcAddress(GetModuleHandleA("d3d9.dll"), "Direct3DCreate9Ex");
@@ -148,11 +148,11 @@ static void create_d3d9_device(HWND wnd)
             }
         }
     }
-    
+
     if (!device) {
         /* otherwise do regular D3D9 setup */
         IDirect3D9 *d3d9 = Direct3DCreate9(D3D_SDK_VERSION);
-        
+
         hr = IDirect3D9_CreateDevice(d3d9, D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, wnd,
                                      D3DCREATE_HARDWARE_VERTEXPROCESSING | D3DCREATE_PUREDEVICE | D3DCREATE_FPU_PRESERVE,
                                      &present, &device);
@@ -172,11 +172,11 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     WNDCLASSW wc;
     RECT rect = { 0, 0, window_width, window_height };
     DWORD style = WS_OVERLAPPEDWINDOW;
-    DWORD exstyle = WS_EX_APPWINDOW;    
+    DWORD exstyle = WS_EX_APPWINDOW;
     HWND wnd;
     int running = 1;
     int needs_refresh = 1;
-    
+
     /* Win32 */
     memset(&wc, 0, sizeof(wc));
     wc.style = CS_DBLCLKS;
@@ -186,24 +186,24 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
     wc.hCursor = LoadCursor(NULL, IDC_ARROW);
     wc.lpszClassName = L"BFBB Stat Tracker Window Class :))))";
     RegisterClassW(&wc);
-    
+
     AdjustWindowRectEx(&rect, style, FALSE, exstyle);
-    
+
     wnd = CreateWindowExW(exstyle, wc.lpszClassName, L"BFBB Speedrun Stat Tracker",
                           style | WS_VISIBLE, CW_USEDEFAULT, CW_USEDEFAULT,
                           rect.right - rect.left, rect.bottom - rect.top,
                           NULL, NULL, wc.hInstance, NULL);
-    
+
     SetWindowLongPtr(wnd, GWLP_USERDATA, (LONG_PTR)idk);
-    
+
     create_d3d9_device(wnd);
     /* GUI */
     idk->ctx = nk_d3d9_init(device, window_width, window_height);
-    
+
     struct nk_context *ctx = idk->ctx;
-    
+
     struct nk_font_atlas *atlas;
-    
+
     nk_d3d9_font_stash_begin(&atlas);
     //struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)LeroyLetteringLightBeta01, sizeof(LeroyLetteringLightBeta01), 15, 0);
     struct nk_font *droid = nk_font_atlas_add_from_memory(atlas, (char *)soonge, sizeof(soonge), 15, 0);
@@ -233,17 +233,19 @@ void start_nk_loop(bfbb_stat_tracker* idk) {
         }
         needs_refresh = 1;
         nk_input_end(ctx);
-        
+
+        // TODO(jelly): clear the screen magenta; it's not happening in present for some reason??
+
         update_and_render(idk);
         framerate = 1000.0f / elapsed_ms;
-        
+
         win32_d3d9_present();
-        
+
         u64 end_tick = win32_get_performance_counter();
         elapsed_ms = win32_get_elapsed_ms(start_tick, end_tick, perf_freq);
         start_tick = end_tick;
     }
-    
+
     // TODO: fun fact if we know we're on windows, we know that windows is going to clean up for us so we actually don't have to
     //nk_d3d9_shutdown();
     //UnregisterClassW(wc.lpszClassName, wc.hInstance);

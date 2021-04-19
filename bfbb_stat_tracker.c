@@ -42,7 +42,6 @@ float graph_dot_thickness = 10;
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_D3D9_IMPLEMENTATION
-#include "nuklear.h"
 #else
 #define NK_INCLUDE_FIXED_TYPES
 #define NK_INCLUDE_STANDARD_IO
@@ -53,25 +52,34 @@ float graph_dot_thickness = 10;
 #define NK_INCLUDE_DEFAULT_FONT
 #define NK_IMPLEMENTATION
 #define NK_SDL_GL2_IMPLEMENTATION
-#include "nuklear.h"
 #endif
+#include "nuklear.h"
 typedef struct nk_context nk_context;
 #include "cJSON.c"
-#if defined(_WIN32)
-typedef union {
-    struct bools_dummy_{
-        s32 is_jumping;
-        s32 is_d_jumping;
-        s32 is_bubble_spinning;
-        s32 is_bubble_bouncing;
-        s32 is_bubble_bashing;
-        s32 is_bubble_bowling;
-        s32 was_d_jumping;
-        s32 is_coptering;
-    };
-    s32 all[sizeof(struct bools_dummy_)/sizeof(s32)];
-} player_bools;
-#else
+
+char *player_bools_lut[] = {
+    "is_jumping",
+    "is_d_jumping",
+    "is_bubble_spinning",
+    "is_bubble_bouncing",
+    "is_bubble_bashing",
+    "is_bubble_bowling",
+    "was_d_jumping",
+    "is_coptering",
+};
+
+// NOTE(jelly): check for NULL so was_d_jumping isn't printed
+char *player_bools_count_lut[] = {
+    "Jumps",
+    "Double Jumps",
+    "Spins",
+    "Bubble Bounces",
+    "Bubble Bashes",
+    "Bubble Bowls",
+    NULL,
+    "Copters",
+};
+
 typedef union {
     struct {
         s32 is_jumping;
@@ -83,10 +91,8 @@ typedef union {
         s32 was_d_jumping;
         s32 is_coptering;
     };
-    s32 all[8];
+    s32 all[8]; // NOTE(jelly): PLEASE make sure this number is correct!
 } player_bools;
-#endif
-
 
 typedef struct {
     player_bools bools;
@@ -144,7 +150,7 @@ bool should_count = false;
 
 void load_runs(bfbb_stat_tracker* tracker) {
     FILE* file = fopen("runs.json", "r");
-    if (file == NULL) 
+    if (file == NULL)
         return;
     fseek(file, 0, SEEK_END);
     size_t size = ftell(file);
@@ -153,7 +159,7 @@ void load_runs(bfbb_stat_tracker* tracker) {
     fread(string, 1, size, file);
     string[size] = '\0';
     fclose(file);
-
+    
     cJSON* main_json = cJSON_Parse(string);
     if (main_json == NULL) {
         const char *error_ptr = cJSON_GetErrorPtr();
@@ -163,19 +169,19 @@ void load_runs(bfbb_stat_tracker* tracker) {
         }
         return;
     }
-
+    
     cJSON* run_count = cJSON_GetObjectItemCaseSensitive(main_json, "run_count");
-    if(!cJSON_IsNumber(run_count) || run_count->valuedouble == 0) 
+    if(!cJSON_IsNumber(run_count) || run_count->valuedouble == 0)
         return;
-
+    
     cJSON* run_array = cJSON_GetObjectItemCaseSensitive(main_json, "run_array");
     if(!cJSON_IsArray(run_array))
         return;
-
-
+    
+    
     int runs_count = run_count->valueint;
     cJSON* run_element;
-
+    
     cJSON_ArrayForEach(run_element, run_array) {
         run run_temp = {0};
         cJSON* player_bools = cJSON_GetObjectItemCaseSensitive(run_element, "player_bools");
@@ -202,7 +208,7 @@ void load_runs(bfbb_stat_tracker* tracker) {
         }
         sb_push(tracker->runs, run_temp);
     }
-
+    
     cJSON_Delete(main_json);
     free(string);
 }
@@ -232,7 +238,7 @@ cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
     cJSON* cbs_array = cJSON_CreateArray();
     if(cJSON_AddItemToObject(main, "cbs_array", cbs_array)) {}
     for(int i = 0; i < cb_count; i++) {
-        cJSON* cb_object = cJSON_CreateObject(); 
+        cJSON* cb_object = cJSON_CreateObject();
         if(cJSON_AddItemToArray(cbs_array, cb_object)) {}
         cJSON* cb_start_frame = cJSON_CreateNumber((double)stat_tracker->runs[run].cruise_boosts[i].startframe);
         if(cJSON_AddItemToObject(cb_object, "cb_start_frame", cb_start_frame)) {}
@@ -244,10 +250,9 @@ cJSON* create_run_json(bfbb_stat_tracker* stat_tracker, int run) {
     return main;
 }
 
-
-bool create_runs_json_file(bfbb_stat_tracker* stat_tracker) {
+void create_runs_json_file(bfbb_stat_tracker* stat_tracker) {
     FILE* file = fopen("runs.json", "w");
-    cJSON* main = cJSON_CreateObject(); 
+    cJSON* main = cJSON_CreateObject();
     int runs_count = sb_count(stat_tracker->runs);
     cJSON* run_count = cJSON_CreateNumber((double)runs_count);
     if(cJSON_AddItemToObject(main, "run_count", run_count)) {}
@@ -338,8 +343,6 @@ void nk_label_printf(struct nk_context *ctx, nk_flags align, const char *fmt, ..
     nk_label(ctx, buffer, align);
 }
 
-
-
 void update_and_render(bfbb_stat_tracker *stat_tracker){
     set_vsync(stat_tracker->settings.vsync); // where is a good place to put this ???
     
@@ -414,19 +417,19 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
     
     nk_clear(ctx);
     
-    if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), NK_WINDOW_NO_SCROLLBAR))
+    // TODO(jelly): Let's account for padding when we calculate button sizes
+    
+    u32 flags = NK_WINDOW_NO_SCROLLBAR | NK_WINDOW_BACKGROUND;
+    if(nk_begin(ctx, "Yep", nk_rect(0, 0, window_width, window_height), flags))
     {
         stat_tracker->reader.should_hook = true; // TODO: get rid of this TBH
         switch(stat_tracker->menu_state) {
             case(menu_Main): {
                 bool dolphin_is_hooked  = stat_tracker->reader.is_hooked;
                 
-                
-                
-                
                 if (dolphin_is_hooked) {
                     if(!stat_tracker->settings.auto_start) {
-                        nk_layout_row_static(ctx, 30, window_width, 1);
+                        nk_layout_row_dynamic(ctx, 30, 1);
                         if (stat_tracker->is_in_run) {
                             if (nk_button_label(ctx, "End Run")) {
                                 end_run(stat_tracker);
@@ -439,12 +442,12 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                     }
                 }
                 if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
-                    nk_layout_row_static(ctx, 30, window_width, 1);
+                    nk_layout_row_dynamic(ctx, 30, 1);
                     if (nk_button_label(ctx, "Run History")) {
                         stat_tracker->menu_state = menu_LastRun;
                     }
                 }
-                nk_layout_row_static(ctx, 30, window_width/2, 2);
+                nk_layout_row_dynamic(ctx, 30, 2);
                 if (nk_button_label(ctx, "Debug")) {
                     stat_tracker->menu_state = menu_Debug;
                 }
@@ -454,12 +457,12 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                 
                 if (sb_count(stat_tracker->runs) && !stat_tracker->is_in_run) {
                     run last_run = sb_last(stat_tracker->runs);
-                    nk_layout_row_static(ctx, 30, window_width/2, 1);
+                    nk_layout_row_dynamic(ctx, 30, 1);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
-                    nk_layout_row_static(ctx, 30, window_width/2, 1);
+                    nk_layout_row_dynamic(ctx, 30, 1);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts) + stat_tracker->is_in_cb);
                     
-                    nk_layout_row_static(ctx, 30, window_width/2, 2);
+                    nk_layout_row_dynamic(ctx, 30, 2);
                     nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Speed Average: %g", last_run.cb_average_speed);
                     
                     
@@ -484,27 +487,27 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                     
                     nk_layout_row_dynamic(ctx, 30*6, 1);
                     if(nk_group_begin(ctx, "Useless Stats", NK_PANEL_MENU)) {
-                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_layout_row_dynamic(ctx, 30, 2);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bashes: %u", bool_counts.is_bubble_bashing);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bounces: %u", bool_counts.is_bubble_bouncing);
-                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_layout_row_dynamic(ctx, 30, 2);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Bowls: %u", bool_counts.is_bubble_bowling);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Copters: %u", bool_counts.is_coptering);
-                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_layout_row_dynamic(ctx, 30, 2);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Double Jumps: %u", bool_counts.is_d_jumping);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Jumps: %u", bool_counts.is_jumping);
-                        nk_layout_row_static(ctx, 30, window_width/2, 2);
+                        nk_layout_row_dynamic(ctx, 30, 2);
                         nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "Spins: %u", bool_counts.is_bubble_spinning);
                         nk_group_end(ctx);
                     }
                     
-                    nk_layout_row_static(ctx, 30, window_width, 1);
+                    nk_layout_row_dynamic(ctx, 30, 1);
                     if (nk_button_label(ctx, "Graphs")) {
                         stat_tracker->menu_state = menu_Debug;
                     }
                     
                     nk_layout_row_dynamic(ctx, 150, 1);
-                    if(nk_chart_begin(ctx, NK_CHART_LINES, sb_count(stat_tracker->current_run.cruise_boosts), min, max)) {
+                    if(nk_chart_begin(ctx, NK_CHART_LINES, cbcount, min, max)) {
                         for(int i = 0; i<cbcount; i++) {
                             nk_flags res = nk_chart_push(ctx, stat_tracker->current_run.cruise_boosts[i].speed);
                             if (res & NK_CHART_HOVERING)
@@ -516,16 +519,16 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
                     
                 }
                 //TODO: Make this colored
-                nk_layout_row_static(ctx, 30, window_width, 1);
+                nk_layout_row_dynamic(ctx, 30, 1);
                 nk_label_colored(ctx, dolphin_is_hooked ? "Dolphin is hooked":"Dolphin is NOT hooked", NK_TEXT_ALIGN_LEFT, dolphin_is_hooked ? nk_rgb(0, 255, 0) : nk_rgb(255, 0, 0));
             } break;
             case(menu_LastRun): {
                 run last_run = sb_last(stat_tracker->runs);
-                nk_layout_row_static(ctx, 30, window_width, 1);
+                nk_layout_row_dynamic(ctx, 30, 1);
                 if (nk_button_label(ctx, "Back")) {
                     stat_tracker->menu_state = menu_Main;
                 }
-                nk_layout_row_static(ctx, 30, window_width/2, 1);
+                nk_layout_row_static(ctx, 30, window_width/2, 2);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "End Frame: %d", last_run.frame_count);
                 nk_layout_row_static(ctx, 30, window_width/2, 1);
                 nk_label_printf(ctx, NK_TEXT_ALIGN_LEFT, "CB Count: %d", sb_count(last_run.cruise_boosts) + stat_tracker->is_in_cb);
@@ -663,8 +666,6 @@ void update_and_render(bfbb_stat_tracker *stat_tracker){
     }
     nk_end(ctx);
 }
-
-
 
 void run_application(void) {
     bfbb_stat_tracker stat_tracker = {0};

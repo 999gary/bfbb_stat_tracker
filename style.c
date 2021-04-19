@@ -133,7 +133,7 @@ set_style(struct nk_context *ctx, enum theme theme)
         nk_style_from_table(ctx, table);
     } else if (theme == THEME_BOB) {
         table[NK_COLOR_TEXT] = nk_rgba(255, 230, 0, 255);
-        table[NK_COLOR_WINDOW] = nk_rgba(25, 79, 144, 215);
+        table[NK_COLOR_WINDOW] = nk_rgba(25, 79, 144, 255);
         table[NK_COLOR_HEADER] = nk_rgba(51, 51, 56, 220);
         table[NK_COLOR_BORDER] = nk_rgba(46, 46, 46, 255);
         table[NK_COLOR_BUTTON] = nk_rgba(55, 176, 201, 255);
@@ -165,5 +165,3 @@ set_style(struct nk_context *ctx, enum theme theme)
         nk_style_default(ctx);
     }
 }
-
-
