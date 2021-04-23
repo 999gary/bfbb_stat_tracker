@@ -11,7 +11,7 @@
 #include <psapi.h>
 #endif
 
-#include "stretchy_buffer.h"
+#include "lib/stretchy_buffer.h"
 
 
 typedef int8_t  s8;
@@ -53,9 +53,9 @@ float graph_dot_thickness = 10;
 #define NK_IMPLEMENTATION
 #define NK_SDL_GL2_IMPLEMENTATION
 #endif
-#include "nuklear.h"
+#include "lib/nuklear.h"
 typedef struct nk_context nk_context;
-#include "cJSON.c"
+#include "lib/cJSON.c"
 
 char *player_bools_lut[] = {
     "is_jumping",
